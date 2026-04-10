@@ -7,23 +7,44 @@
     <style>
         body { font-family: 'Arial', sans-serif; margin: 40px; background-color: #f4f7f6; color: #333; }
         .container { max-width: 1000px; margin: auto; background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        
+        /* New Personal Info Section */
+        .payee-info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+        .payee-info h3 { grid-column: span 2; margin-top: 0; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .payee-info input { width: 90%; margin-bottom: 10px; }
+
         .setup-area { background: #eef2f3; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }
         .billing-section { border: 2px solid #eaeeef; padding: 25px; margin-top: 25px; border-radius: 8px; }
         .section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f4f7f6; padding-bottom: 15px; margin-bottom: 20px; }
-        .grid-row { display: grid; grid-template-columns: 150px 1fr 120px 120px 120px; gap: 15px; margin-bottom: 12px; align-items: center; }
+        .grid-row { display: grid; grid-template-columns: 150px 1fr 120px 120px 120px 50px; gap: 15px; margin-bottom: 12px; align-items: center; }
         input, select { padding: 10px; border: 1px solid #ced4da; border-radius: 4px; }
+        
         .btn { padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-add { background: #007bff; color: white; }
-        .btn-excel { background: #1d6f42; color: white; margin-top: 30px; }
+        .btn-excel { background: #1d6f42; color: white; margin-top: 30px; width: 100%; }
+        .btn-row { background: #6c757d; color: white; padding: 5px 10px; font-size: 12px; margin-top: 10px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div style="text-align: right; font-style: italic;">Submission Date: <span id="todayDate"></span></div>
+    <div style="text-align: right; font-style: italic; margin-bottom: 10px;">Submission Date: <span id="todayDate"></span></div>
+
+    <div class="payee-info">
+        <h3>Payee Information (Who are we paying?)</h3>
+        <div>
+            <input type="text" placeholder="Full Name / Firm Name">
+            <input type="text" placeholder="Street Address">
+        </div>
+        <div>
+            <input type="text" placeholder="City, State, Zip">
+            <input type="email" placeholder="Email Address">
+        </div>
+    </div>
+
     <div class="setup-area">
-        <strong>New Section:</strong>
+        <strong>Add Billing Section:</strong>
         <select id="categorySelector">
-            <option value="">-- Select --</option>
+            <option value="">-- Select Category --</option>
             <option value="Defendant">Defendant</option>
             <option value="Training">Training</option>
             <option value="MCLAP General">MCLAP General</option>
@@ -31,8 +52,10 @@
         </select>
         <button class="btn btn-add" onclick="createSection()">Add Section</button>
     </div>
+
     <div id="invoiceContainer"></div>
-    <button class="btn btn-excel" onclick="exportToExcel()">Export to Excel</button>
+
+    <button class="btn btn-excel" onclick="exportToExcel()">Export Full Invoice to Excel</button>
 </div>
 
 <script>
@@ -49,28 +72,73 @@
         const header = (cat === "Defendant") ? `<input type="text" placeholder="Type Defendant Name..." style="font-size:1.2em; width:300px;">` : `<h2>${cat}</h2>`;
         
         div.innerHTML = `
-            <div class="section-header">${header} <div>Rate: $<input type="number" id="rate-${id}" value="0" style="width:60px;" oninput="calc('${id}')"></div></div>
-            <div class="grid-row">
-                <input type="date">
-                <select><option>Select Task...</option><option>Administrative</option><option>Research</option></select>
-                <input type="number" step="0.1" class="time-in" onchange="valTime(this);calc('${id}')" placeholder="0.x0">
-                <div id="sum-${id}" style="font-weight:bold;">$0.00</div>
-                <button onclick="this.parentElement.parentElement.remove()">X</button>
-            </div>`;
+            <div class="section-header">${header} 
+                <div>Rate: $<input type="number" id="rate-${id}" value="0" style="width:70px;" oninput="updateTotals('${id}')"> /HR</div>
+            </div>
+            <div id="rows-${id}">
+                <div class="grid-row">
+                    <input type="date">
+                    <select>
+                        <option>Select Task...</option>
+                        <option>Drafting Documents</option>
+                        <option>Document Review</option>
+                        <option>Client Communication</option>
+                        <option>Legal Research</option>
+                        <option>Court Appearance</option>
+                        <option>Administrative/Filing</option>
+                    </select>
+                    <input type="number" step="0.1" class="time-in" onchange="valTime(this);updateTotals('${id}')" placeholder="0.x0">
+                    <div class="row-sum" style="font-weight:bold;">$0.00</div>
+                    <button onclick="this.parentElement.remove(); updateTotals('${id}')">X</button>
+                </div>
+            </div>
+            <button class="btn btn-row" onclick="addRow('${id}')">+ Add Task Row</button>
+        `;
         document.getElementById('invoiceContainer').appendChild(div);
     }
 
-    function valTime(i) { i.value = (Math.round(parseFloat(i.value) * 10) / 10).toFixed(2).replace(/\d$/, '0'); }
-    function calc(id) {
-        const r = document.getElementById(`rate-${id}`).value;
-        const t = document.querySelector(`#sec-${id} .time-in`).value;
-        document.getElementById(`sum-${id}`).innerText = `$${(r * t).toFixed(2)}`;
+    function addRow(sectionId) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'grid-row';
+        rowDiv.innerHTML = `
+            <input type="date">
+            <select>
+                <option>Select Task...</option>
+                <option>Drafting Documents</option>
+                <option>Document Review</option>
+                <option>Client Communication</option>
+                <option>Legal Research</option>
+                <option>Court Appearance</option>
+                <option>Administrative/Filing</option>
+            </select>
+            <input type="number" step="0.1" class="time-in" onchange="valTime(this);updateTotals('${sectionId}')" placeholder="0.x0">
+            <div class="row-sum" style="font-weight:bold;">$0.00</div>
+            <button onclick="this.parentElement.remove(); updateTotals('${sectionId}')">X</button>
+        `;
+        document.getElementById(`rows-${sectionId}`).appendChild(rowDiv);
     }
+
+    function valTime(i) { 
+        let val = parseFloat(i.value) || 0;
+        i.value = (Math.round(val * 10) / 10).toFixed(2).replace(/\d$/, '0'); 
+    }
+
+    function updateTotals(sectionId) {
+        const rate = parseFloat(document.getElementById(`rate-${sectionId}`).value) || 0;
+        const rows = document.querySelectorAll(`#sec-${sectionId} .grid-row`);
+        
+        rows.forEach(row => {
+            const time = parseFloat(row.querySelector('.time-in').value) || 0;
+            const sumDisplay = row.querySelector('.row-sum');
+            sumDisplay.innerText = `$${(rate * time).toFixed(2)}`;
+        });
+    }
+
     function exportToExcel() {
         const ws = XLSX.utils.table_to_sheet(document.getElementById('invoiceContainer'));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Invoice");
-        XLSX.writeFile(wb, "Invoice.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Legal Invoice");
+        XLSX.writeFile(wb, "Legal_Invoice.xlsx");
     }
 </script>
 </body>
