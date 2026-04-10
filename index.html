@@ -17,7 +17,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
         th { background-color: #f2f2f2; border: 1px solid #000; padding: 8px; font-size: 12px; text-transform: uppercase; }
         td { border: 1px solid #000; padding: 0; }
-        input, select { width: 100%; border: none; padding: 10px; box-sizing: border-box; font-size: 13px; }
+        input { width: 100%; border: none; padding: 10px; box-sizing: border-box; font-size: 13px; }
         
         .section-bar { display: flex; justify-content: space-between; align-items: center; background: #000; color: #fff; padding: 5px 15px; font-weight: bold; }
         .section-bar input { background: transparent; color: #fff; border: none; font-weight: bold; text-transform: uppercase; width: auto; font-size: 14px; outline: none; }
@@ -28,7 +28,7 @@
 
         .total-row { background-color: #ffff00; font-weight: bold; }
         .controls { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #000; padding-top: 20px; }
-        .grand-total-box { border: 3px double #000; padding: 15px 25px; font-size: 1.6em; font-weight: bold; background: #ffff00; }
+        .grand-total-box { border: 3px double #000; padding: 15px 25px; font-size: 1.6em; font-weight: bold; background: #ffff00; display: flex; gap: 40px; }
         
         .btn { padding: 10px 20px; cursor: pointer; font-weight: bold; border: 1px solid #000; border-radius: 4px; }
         .btn-add { background: #007bff; color: white; border: none; }
@@ -37,7 +37,7 @@
         .btn-excel { background: #1d6f42; color: white; border: none; }
         .btn-delete-sec { background: #ff4d4d; color: white; border: none; padding: 5px 10px; font-size: 11px; }
         
-        @media print { .setup-area, .btn, .delete-btn, .add-row-btn, .btn-delete-sec { display: none; } }
+        @media print { .setup-area, .btn, .add-row-btn, .btn-delete-sec { display: none; } }
     </style>
 </head>
 <body>
@@ -78,7 +78,10 @@
             <button class="btn btn-clear" onclick="clearAllData()">Clear All</button>
             <button class="btn btn-excel" onclick="exportToExcel()">Export to Excel</button>
         </div>
-        <div class="grand-total-box">Grand Total: <span id="grandTotal">$0.00</span></div>
+        <div class="grand-total-box">
+            <div>Total Hours: <span id="totalHours">0.00</span></div>
+            <div>Grand Total: <span id="grandTotal">$0.00</span></div>
+        </div>
     </div>
 </div>
 
@@ -102,6 +105,11 @@
             ? `<input type="text" value="${savedData?.title || ''}" placeholder="ENTER DEFENDANT NAME">` 
             : `<span>${cat}</span>`;
 
+        // Updated Logic: Only show name header for Defendant
+        const entityHeader = (cat === "Defendant") 
+            ? `<div class="entity-header">Billing Entity (Name): <input type="text" class="sec-entity" value="${savedData?.entityName || ''}" placeholder="e.g. Aaron Jones"></div>`
+            : '';
+
         section.innerHTML = `
             <div class="section-bar">
                 ${titlePart}
@@ -110,9 +118,7 @@
                     <button class="btn-delete-sec" onclick="deleteSection('${id}')">Delete Section</button>
                 </div>
             </div>
-            <div class="entity-header">
-                Billing Entity (Name): <input type="text" class="sec-entity" value="${savedData?.entityName || ''}" placeholder="e.g. Aaron Jones">
-            </div>
+            ${entityHeader}
             <table>
                 <thead><tr><th style="width:120px;">Date</th><th>Description of Service</th><th style="width:100px;">Time</th><th style="width:130px;">Amount</th><th style="width:40px;"></th></tr></thead>
                 <tbody id="body-${id}"></tbody>
@@ -170,6 +176,7 @@
 
     function calcAll() {
         let grand = 0;
+        let grandHours = 0;
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
             let sTime = 0, sPrice = 0;
             const rate = parseFloat(sec.querySelector('.sec-rate').value) || 0;
@@ -182,8 +189,10 @@
             sec.querySelector('.sec-time-total').innerText = sTime.toFixed(2);
             sec.querySelector('.sec-price-total').innerText = `$${sPrice.toFixed(2)}`;
             grand += sPrice;
+            grandHours += sTime;
         });
         document.getElementById('grandTotal').innerText = `$${grand.toFixed(2)}`;
+        document.getElementById('totalHours').innerText = grandHours.toFixed(2);
     }
 
     function saveData() {
@@ -191,7 +200,7 @@
             id: sec.id.replace('sec-', ''),
             category: sec.querySelector('.section-bar span')?.innerText || "Defendant",
             title: sec.querySelector('.section-bar input')?.value || "",
-            entityName: sec.querySelector('.sec-entity').value,
+            entityName: sec.querySelector('.sec-entity')?.value || "",
             rate: sec.querySelector('.sec-rate').value,
             rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({
                 date: row.cells[0].querySelector('input').value,
