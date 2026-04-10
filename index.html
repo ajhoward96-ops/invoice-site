@@ -28,6 +28,7 @@
         .section-bar { display: flex; justify-content: space-between; align-items: center; background: #000; color: #fff; padding: 10px 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .section-bar .right-controls { display: flex; align-items: center; gap: 15px; }
         .section-bar input { color: #fff; width: 60px; border-bottom: 1px solid #fff; }
+        .toggle-btn { cursor: pointer; user-select: none; font-size: 14px; margin-right: 10px; width: 20px; display: inline-block; text-align: center; }
         
         .entity-header { background: #e9ecef; padding: 10px 15px; border: 1px solid #000; border-top: none; display: flex; align-items: center; gap: 10px; font-weight: bold; }
         .entity-header input { background: transparent; border-bottom: 1px solid #999; width: 400px; padding: 2px; }
@@ -43,7 +44,10 @@
         .btn-excel { background: #1d6f42; color: white; border: none; }
         .btn-delete-sec { background: #ff4d4d; color: white; border: none; padding: 5px 10px; font-size: 11px; }
         
-        @media print { .setup-area, .btn, .add-row-btn, .btn-delete-sec, .nav-arrow { display: none; } }
+        @media print { 
+            .setup-area, .btn, .add-row-btn, .btn-delete-sec, .nav-arrow, .toggle-btn { display: none; } 
+            .section-content { display: block !important; }
+        }
     </style>
 </head>
 <body>
@@ -137,6 +141,17 @@
         } else { row.classList.remove('date-error'); }
     }
 
+    function toggleSection(id, btn) {
+        const content = document.getElementById('content-' + id);
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            btn.innerHTML = '&#9660;'; // Down arrow
+        } else {
+            content.style.display = 'none';
+            btn.innerHTML = '&#9658;'; // Right arrow
+        }
+    }
+
     function createSection(savedData = null) {
         const cat = savedData ? savedData.category : document.getElementById('categorySelector').value;
         if (!cat) return;
@@ -153,26 +168,31 @@
 
         section.innerHTML = `
             <div class="section-bar">
-                <span>${cat}</span>
+                <div style="display: flex; align-items: center;">
+                    <span class="toggle-btn" onclick="toggleSection('${id}', this)">&#9660;</span>
+                    <span>${cat}</span>
+                </div>
                 <div class="right-controls">
                     <div>Per Hour Rate: $<input type="number" class="sec-rate" value="${savedData?.rate || 0}" style="width: 60px;" oninput="calcAll()"></div>
                     <button class="btn-delete-sec" onclick="deleteSection('${id}')">Delete Section</button>
                 </div>
             </div>
             ${entityHeader}
-            <table>
-                <thead><tr><th style="width:150px;">Date</th><th>Description of Service</th><th style="width:100px;">Time</th><th style="width:130px;">Amount</th><th style="width:40px;"></th></tr></thead>
-                <tbody id="body-${id}"></tbody>
-                <tfoot>
-                    <tr class="total-row">
-                        <td colspan="2" style="text-align: right; padding-right: 15px;">SUBTOTAL</td>
-                        <td class="sec-time-total" style="text-align: center;">0.00</td>
-                        <td class="sec-price-total" style="text-align: right; padding-right: 10px;">$0.00</td>
-                        <td></td>
-                    </tr>
-                </tfoot>
-            </table>
-            <button class="btn add-row-btn" style="margin-top:8px; font-size:12px; border-color:#ccc;" onclick="addRow('${id}')">+ Add Line Item</button>
+            <div id="content-${id}" class="section-content">
+                <table>
+                    <thead><tr><th style="width:150px;">Date</th><th>Description of Service</th><th style="width:100px;">Time</th><th style="width:130px;">Amount</th><th style="width:40px;"></th></tr></thead>
+                    <tbody id="body-${id}"></tbody>
+                    <tfoot>
+                        <tr class="total-row">
+                            <td colspan="2" style="text-align: right; padding-right: 15px;">SUBTOTAL</td>
+                            <td class="sec-time-total" style="text-align: center;">0.00</td>
+                            <td class="sec-price-total" style="text-align: right; padding-right: 10px;">$0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <button class="btn add-row-btn" style="margin-top:8px; font-size:12px; border-color:#ccc;" onclick="addRow('${id}')">+ Add Line Item</button>
+            </div>
         `;
         document.getElementById('invoiceContainer').appendChild(section);
         if (savedData) { savedData.rows.forEach(r => addRow(id, r)); } 
@@ -235,7 +255,7 @@
     function saveData() {
         const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({
             id: sec.id.replace('sec-', ''),
-            category: sec.querySelector('.section-bar span').innerText,
+            category: sec.querySelector('.section-bar span:nth-child(2)').innerText,
             entityName: sec.querySelector('.sec-entity')?.value || "",
             rate: sec.querySelector('.sec-rate').value,
             rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({
