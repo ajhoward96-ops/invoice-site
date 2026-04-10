@@ -8,157 +8,159 @@
         body { font-family: 'Arial', sans-serif; margin: 20px; background-color: #fff; color: #000; }
         .container { max-width: 1100px; margin: auto; }
         
-        /* Payee Section Styling */
-        .payee-info { margin-bottom: 20px; border: 1px solid #000; padding: 15px; }
-        .payee-info h1 { margin: 0; font-size: 24px; text-decoration: underline; }
-        .payee-info input { border: none; border-bottom: 1px solid #ccc; width: 300px; padding: 5px; margin: 5px 0; outline: none; }
+        .payee-info { margin-bottom: 20px; border: 1px solid #000; padding: 20px; }
+        .header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .payee-info input { border: none; border-bottom: 1px solid #eee; width: 100%; padding: 5px; margin: 2px 0; outline: none; }
 
-        .setup-area { background: #f0f0f0; padding: 15px; margin-bottom: 20px; border: 1px solid #ccc; display: flex; gap: 10px; align-items: center; }
+        .setup-area { background: #f8f9fa; padding: 15px; margin-bottom: 20px; border: 1px dashed #ccc; display: flex; gap: 10px; align-items: center; }
         
-        /* Spreadsheet Table Layout */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-        th { background-color: #e2e2e2; border: 1px solid #000; padding: 8px; font-size: 13px; }
+        th { background-color: #f2f2f2; border: 1px solid #000; padding: 8px; font-size: 12px; text-transform: uppercase; }
         td { border: 1px solid #000; padding: 0; }
-        input, select { width: 100%; border: none; padding: 8px; box-sizing: border-box; font-size: 13px; font-family: Arial; }
+        input, select { width: 100%; border: none; padding: 10px; box-sizing: border-box; font-size: 13px; }
         
-        .section-header-row { background-color: #fff; font-weight: bold; }
-        .total-row { background-color: #ffff00; font-weight: bold; } /* Yellow like the spreadsheet */
+        .section-bar { display: flex; justify-content: space-between; align-items: center; background: #000; color: #fff; padding: 5px 15px; font-weight: bold; }
+        .section-bar input { background: transparent; color: #fff; border: none; font-weight: bold; text-transform: uppercase; width: auto; font-size: 14px; outline: none; }
+        .section-bar .right-controls { display: flex; align-items: center; gap: 15px; }
         
-        .controls { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; }
-        .grand-total-box { border: 3px double #000; padding: 10px 20px; font-size: 1.5em; font-weight: bold; background: #ffff00; }
+        .entity-header { background: #e9ecef; padding: 10px 15px; border: 1px solid #000; border-top: none; display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .entity-header input { background: transparent; border-bottom: 1px solid #999; width: 300px; padding: 2px; }
+
+        .total-row { background-color: #ffff00; font-weight: bold; }
+        .controls { margin-top: 30px; display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #000; padding-top: 20px; }
+        .grand-total-box { border: 3px double #000; padding: 15px 25px; font-size: 1.6em; font-weight: bold; background: #ffff00; }
         
-        .btn { padding: 10px 20px; cursor: pointer; font-weight: bold; border: 1px solid #000; }
-        .btn-add { background: #007bff; color: white; }
-        .btn-excel { background: #1d6f42; color: white; }
+        .btn { padding: 10px 20px; cursor: pointer; font-weight: bold; border: 1px solid #000; border-radius: 4px; }
+        .btn-add { background: #007bff; color: white; border: none; }
+        .btn-save { background: #28a745; color: white; border: none; }
+        .btn-clear { background: #dc3545; color: white; border: none; }
+        .btn-excel { background: #1d6f42; color: white; border: none; }
+        .btn-delete-sec { background: #ff4d4d; color: white; border: none; padding: 5px 10px; font-size: 11px; }
         
-        /* Hide buttons during print/export if needed */
-        @media print { .setup-area, .btn, .delete-btn { display: none; } }
-        .delete-btn { background: none; border: none; color: red; cursor: pointer; font-weight: bold; width: 30px; }
+        @media print { .setup-area, .btn, .delete-btn, .add-row-btn, .btn-delete-sec { display: none; } }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="payee-info">
-        <h1>INVOICE</h1>
-        <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+        <div class="header-grid">
             <div>
-                <input type="text" placeholder="Your Name / Firm (Payee)"> <br>
-                <input type="text" placeholder="Address"> <br>
-                <input type="text" placeholder="City, State, Zip">
+                <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 28px; font-weight: bold;">
+                <input type="text" id="firmName" placeholder="Attorney / Firm Name">
+                <input type="text" id="address1" placeholder="Street Address">
+                <input type="text" id="address2" placeholder="City, State, Zip">
             </div>
             <div style="text-align: right;">
-                Date: <span id="todayDate"></span> <br>
-                Invoice #: <input type="text" placeholder="2026-001" style="width: 100px; text-align: right;">
+                <p>Date: <span id="todayDate"></span></p>
+                <p>Invoice #: <input type="text" id="invNum" placeholder="JT0326" style="width: 120px; text-align: right; border-bottom: 1px solid #000;"></p>
             </div>
         </div>
     </div>
 
     <div class="setup-area">
-        <strong>Create New Section:</strong>
+        <strong>Add Section:</strong>
         <select id="categorySelector">
-            <option value="">-- Choose --</option>
+            <option value="">-- Choose Category --</option>
             <option value="Defendant">Defendant</option>
             <option value="Training">Training</option>
             <option value="MCLAP General">MCLAP General</option>
             <option value="Expenses">Expenses</option>
         </select>
-        <button class="btn btn-add" onclick="createSection()">+ Add to Grid</button>
+        <button class="btn btn-add" onclick="createSection()">+ Add to Invoice</button>
     </div>
 
     <div id="invoiceContainer"></div>
 
     <div class="controls">
-        <button class="btn btn-excel" onclick="exportToExcel()">Export to Excel (.xlsx)</button>
-        <div class="grand-total-box">
-            Grand Total: <span id="grandTotal">$0.00</span>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-save" onclick="saveData()">Save Progress</button>
+            <button class="btn btn-clear" onclick="clearAllData()">Clear All</button>
+            <button class="btn btn-excel" onclick="exportToExcel()">Export to Excel</button>
         </div>
+        <div class="grand-total-box">Grand Total: <span id="grandTotal">$0.00</span></div>
     </div>
 </div>
 
 <script>
-    window.onload = () => { document.getElementById('todayDate').innerText = new Date().toLocaleDateString(); };
+    window.onload = () => { 
+        document.getElementById('todayDate').innerText = new Date().toLocaleDateString();
+        loadData();
+    };
 
-    function createSection() {
-        const cat = document.getElementById('categorySelector').value;
+    function createSection(savedData = null) {
+        const cat = savedData ? savedData.category : document.getElementById('categorySelector').value;
         if (!cat) return;
-        const id = Date.now();
+        const id = savedData ? savedData.id : Date.now();
         
         const section = document.createElement('div');
-        section.style.marginBottom = "30px";
+        section.className = 'billing-section';
+        section.style.marginBottom = "40px";
         section.id = `sec-${id}`;
         
-        const headerHtml = (cat === "Defendant") 
-            ? `<input type="text" placeholder="ENTER DEFENDANT NAME HERE" style="font-weight:bold; background:#f9f9f9; border-bottom:1px solid #000;">` 
-            : `<div style="padding:8px; font-weight:bold; background:#f9f9f9;">${cat}</div>`;
+        const titlePart = (cat === "Defendant") 
+            ? `<input type="text" value="${savedData?.title || ''}" placeholder="ENTER DEFENDANT NAME">` 
+            : `<span>${cat}</span>`;
 
         section.innerHTML = `
-            ${headerHtml}
+            <div class="section-bar">
+                ${titlePart}
+                <div class="right-controls">
+                    <div>Per Hour Rate: $<input type="number" class="sec-rate" value="${savedData?.rate || 255}" style="width: 60px;" oninput="calcAll()"></div>
+                    <button class="btn-delete-sec" onclick="deleteSection('${id}')">Delete Section</button>
+                </div>
+            </div>
+            <div class="entity-header">
+                Billing Entity (Name): <input type="text" class="sec-entity" value="${savedData?.entityName || ''}" placeholder="e.g. Aaron Jones">
+            </div>
             <table>
-                <thead>
-                    <tr>
-                        <th style="width: 100px;">Date</th>
-                        <th style="width: 120px;">Name</th>
-                        <th>Description of Legal Services</th>
-                        <th style="width: 80px;">Time</th>
-                        <th style="width: 90px;">Rate</th>
-                        <th style="width: 100px;">Total</th>
-                        <th style="width: 40px;" class="delete-btn"></th>
-                    </tr>
-                </thead>
-                <tbody id="body-${id}">
-                    <tr class="item-row">
-                        <td><input type="text" placeholder="MM/DD/YYYY"></td>
-                        <td><input type="text" placeholder="Name"></td>
-                        <td><select>
-                            <option>Select Task...</option>
-                            <option>Formatting/Revising Assessment</option>
-                            <option>Conference with Counsel</option>
-                            <option>Drafting Case Assessment</option>
-                            <option>Legal Research</option>
-                            <option>Document Review</option>
-                        </select></td>
-                        <td><input type="number" step="0.1" class="time-in" onchange="valTime(this);calcAll()" placeholder="0.x0"></td>
-                        <td><input type="number" class="rate-in" value="100" oninput="calcAll()"></td>
-                        <td class="row-total">$0.00</td>
-                        <td><button class="delete-btn" onclick="this.parentElement.parentElement.remove(); calcAll()">X</button></td>
-                    </tr>
-                </tbody>
+                <thead><tr><th style="width:120px;">Date</th><th>Description of Service</th><th style="width:100px;">Time</th><th style="width:130px;">Amount</th><th style="width:40px;"></th></tr></thead>
+                <tbody id="body-${id}"></tbody>
                 <tfoot>
                     <tr class="total-row">
-                        <td colspan="3" style="text-align: right; padding-right: 10px;">Total for Section</td>
+                        <td colspan="2" style="text-align: right; padding-right: 15px;">SUBTOTAL</td>
                         <td class="sec-time-total" style="text-align: center;">0.00</td>
-                        <td></td>
-                        <td class="sec-price-total" style="text-align: right; padding-right: 8px;">$0.00</td>
+                        <td class="sec-price-total" style="text-align: right; padding-right: 10px;">$0.00</td>
                         <td></td>
                     </tr>
                 </tfoot>
             </table>
-            <button class="btn" style="margin-top:5px; font-size:11px;" onclick="addRow('${id}')">+ Add Row</button>
+            <button class="btn add-row-btn" style="margin-top:8px; font-size:12px; border-color:#ccc;" onclick="addRow('${id}')">+ Add Line Item</button>
         `;
         document.getElementById('invoiceContainer').appendChild(section);
+        if (savedData) {
+            savedData.rows.forEach(r => addRow(id, r));
+        } else {
+            addRow(id);
+        }
+        calcAll();
     }
 
-    function addRow(id) {
+    function addRow(id, data = null) {
         const tr = document.createElement('tr');
         tr.className = "item-row";
         tr.innerHTML = `
-            <td><input type="text" placeholder="MM/DD/YYYY"></td>
-            <td><input type="text" placeholder="Name"></td>
-            <td><select>
-                <option>Select Task...</option>
-                <option>Formatting/Revising Assessment</option>
-                <option>Conference with Counsel</option>
-                <option>Drafting Case Assessment</option>
-                <option>Legal Research</option>
-                <option>Document Review</option>
-            </select></td>
-            <td><input type="number" step="0.1" class="time-in" onchange="valTime(this);calcAll()" placeholder="0.x0"></td>
-            <td><input type="number" class="rate-in" value="100" oninput="calcAll()"></td>
-            <td class="row-total">$0.00</td>
-            <td><button class="delete-btn" onclick="this.parentElement.parentElement.remove(); calcAll()">X</button></td>
+            <td><input type="text" value="${data?.date || ''}" placeholder="MM/DD/YYYY"></td>
+            <td><input type="text" value="${data?.desc || ''}" placeholder="Enter service description..."></td>
+            <td><input type="number" step="0.1" value="${data?.time || ''}" class="time-in" onchange="valTime(this);calcAll()" placeholder="0.x0"></td>
+            <td class="row-total" style="text-align: right; padding-right: 10px;">$0.00</td>
+            <td><button style="color:red; border:none; background:none; cursor:pointer; font-weight:bold;" onclick="this.parentElement.parentElement.remove(); calcAll()">X</button></td>
         `;
         document.getElementById(`body-${id}`).appendChild(tr);
+    }
+
+    function deleteSection(id) {
+        if (confirm("Delete this entire section?")) {
+            document.getElementById(`sec-${id}`).remove();
+            calcAll();
+        }
+    }
+
+    function clearAllData() {
+        if (confirm("Wipe all data and start a new invoice?")) {
+            localStorage.removeItem('invoice_data');
+            location.reload();
+        }
     }
 
     function valTime(i) { 
@@ -167,36 +169,63 @@
     }
 
     function calcAll() {
-        let grandTotal = 0;
-        const sections = document.querySelectorAll('[id^="sec-"]');
-
-        sections.forEach(sec => {
-            let secTime = 0;
-            let secPrice = 0;
-            const rows = sec.querySelectorAll('.item-row');
-
-            rows.forEach(row => {
+        let grand = 0;
+        document.querySelectorAll('[id^="sec-"]').forEach(sec => {
+            let sTime = 0, sPrice = 0;
+            const rate = parseFloat(sec.querySelector('.sec-rate').value) || 0;
+            sec.querySelectorAll('.item-row').forEach(row => {
                 const t = parseFloat(row.querySelector('.time-in').value) || 0;
-                const r = parseFloat(row.querySelector('.rate-in').value) || 0;
-                const rowSum = t * r;
+                const rowSum = t * rate;
                 row.querySelector('.row-total').innerText = `$${rowSum.toFixed(2)}`;
-                secTime += t;
-                secPrice += rowSum;
+                sTime += t; sPrice += rowSum;
             });
-
-            sec.querySelector('.sec-time-total').innerText = secTime.toFixed(2);
-            sec.querySelector('.sec-price-total').innerText = `$${secPrice.toFixed(2)}`;
-            grandTotal += secPrice;
+            sec.querySelector('.sec-time-total').innerText = sTime.toFixed(2);
+            sec.querySelector('.sec-price-total').innerText = `$${sPrice.toFixed(2)}`;
+            grand += sPrice;
         });
+        document.getElementById('grandTotal').innerText = `$${grand.toFixed(2)}`;
+    }
 
-        document.getElementById('grandTotal').innerText = `$${grandTotal.toFixed(2)}`;
+    function saveData() {
+        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({
+            id: sec.id.replace('sec-', ''),
+            category: sec.querySelector('.section-bar span')?.innerText || "Defendant",
+            title: sec.querySelector('.section-bar input')?.value || "",
+            entityName: sec.querySelector('.sec-entity').value,
+            rate: sec.querySelector('.sec-rate').value,
+            rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({
+                date: row.cells[0].querySelector('input').value,
+                desc: row.cells[1].querySelector('input').value,
+                time: row.cells[2].querySelector('input').value
+            }))
+        }));
+        localStorage.setItem('invoice_data', JSON.stringify({
+            payee: document.getElementById('payeeName').value,
+            firm: document.getElementById('firmName').value,
+            address1: document.getElementById('address1').value,
+            address2: document.getElementById('address2').value,
+            invNum: document.getElementById('invNum').value,
+            sections: sections
+        }));
+        alert("Invoice progress saved!");
+    }
+
+    function loadData() {
+        const saved = JSON.parse(localStorage.getItem('invoice_data'));
+        if (!saved) return;
+        document.getElementById('payeeName').value = saved.payee || "";
+        document.getElementById('firmName').value = saved.firm || "";
+        document.getElementById('address1').value = saved.address1 || "";
+        document.getElementById('address2').value = saved.address2 || "";
+        document.getElementById('invNum').value = saved.invNum || "";
+        saved.sections.forEach(s => createSection(s));
     }
 
     function exportToExcel() {
-        const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.table_to_sheet(document.getElementById('invoiceContainer'));
-        XLSX.utils.book_append_sheet(wb, ws, "Invoice");
-        XLSX.writeFile(wb, "Legal_Invoice.xlsx");
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Legal Invoice");
+        XLSX.writeFile(wb, "Legal_Invoice_Export.xlsx");
     }
 </script>
 </body>
