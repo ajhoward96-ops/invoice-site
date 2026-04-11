@@ -206,7 +206,7 @@
         tr.innerHTML = `
             <td><input type="date" value="${data?.date || ''}" onchange="checkDateMatch(this); calcAll()"></td>
             <td><input type="text" value="${data?.desc || ''}" placeholder="Enter service description..." spellcheck="true"></td>
-            <td><input type="number" step="0.1" value="${data?.time || ''}" class="time-in" onchange="valTime(this);calcAll()" placeholder="0.x0"></td>
+            <td><input type="number" step="0.1" value="${data?.time || ''}" class="time-in" onchange="valTime(this);calcAll()" placeholder="0.00"></td>
             <td class="row-total" style="text-align: right; padding-right: 10px;">$0.00</td>
             <td><button style="color:red; border:none; background:none; cursor:pointer; font-weight:bold;" onclick="this.parentElement.parentElement.remove(); calcAll()">X</button></td>
         `;
@@ -230,7 +230,7 @@
 
     function valTime(i) { 
         let val = parseFloat(i.value) || 0;
-        i.value = (Math.round(val * 10) / 10).toFixed(2).replace(/\d$/, '0'); 
+        i.value = val.toFixed(2); 
     }
 
     function calcAll() {
@@ -298,7 +298,6 @@
         let exportData = [];
         let rowObjects = [];
 
-        // 1. Payee Info
         exportData.push([document.getElementById('payeeName').value]);
         exportData.push([document.getElementById('firmName').value]);
         exportData.push([document.getElementById('addressLine1').value]);
@@ -309,18 +308,15 @@
         exportData.push(["Invoice #:", document.getElementById('invNum').value]);
         exportData.push([]);
 
-        // 2. Sections with Row Grouping
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
             const title = sec.querySelector('.sec-title').innerText;
             const rate = sec.querySelector('.sec-rate').value;
             const entity = sec.querySelector('.sec-entity')?.value || "N/A";
 
-            // Section Header (Not Grouped)
             exportData.push([title.toUpperCase(), "", "", "Rate per Hour:", `$${rate}`]);
             if (entity !== "N/A") exportData.push(["Billing Entity:", entity]);
             exportData.push(["Date", "Description", "Time", "Amount"]);
             
-            // Item Rows (Grouped/Collapsed)
             sec.querySelectorAll('.item-row').forEach(row => {
                 const cells = row.querySelectorAll('input');
                 exportData.push([
@@ -329,33 +325,17 @@
                     cells[2].value, 
                     row.querySelector('.row-total').innerText
                 ]);
-                rowObjects.push({ level: 1 }); // Mark as level 1 (collapsible)
             });
 
-            // Subtotal Row (Grouped)
             exportData.push(["", "SUBTOTAL", sec.querySelector('.sec-time-total').innerText, sec.querySelector('.sec-price-total').innerText]);
-            rowObjects.push({ level: 1 });
-            exportData.push([]); // Gap
+            exportData.push([]); 
         });
 
-        // 3. Final Grand Totals
         exportData.push(["FINAL SUMMARY"]);
         exportData.push(["Total Hours:", document.getElementById('totalHours').innerText]);
         exportData.push(["Grand Total:", document.getElementById('grandTotal').innerText]);
 
         const ws = XLSX.utils.aoa_to_sheet(exportData);
-
-        // Apply Row Grouping (Outlining)
-        ws['!rows'] = exportData.map((_, i) => {
-            const groupInfo = rowObjects.find((obj, idx) => {
-                // Adjusting for header rows offset
-                const offset = 9 + (document.querySelectorAll('[id^="sec-"]').length * 3); 
-                return false; // Dynamic level assignment logic
-            });
-            // Manual level check for demo: collapse middle rows
-            return (i > 9 && i < exportData.length - 4) ? { level: 1, hidden: false } : {};
-        });
-
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Legal Invoice");
         XLSX.writeFile(wb, "Legal_Invoice_Export.xlsx");
