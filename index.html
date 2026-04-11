@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Legal Invoice Creator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Arial', sans-serif; margin: 20px; background-color: #fff; color: #000; }
         .container { max-width: 1100px; margin: auto; }
@@ -105,6 +106,11 @@
 </div>
 
 <script>
+    // Supabase Cloud Credentials
+    const SUPABASE_URL = 'https://cfliviopdogrljkxzuaa.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let currentInvoiceDate = new Date(2026, 3);
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -118,24 +124,13 @@
         document.getElementById('currentMonthDisplay').innerText = `${months[currentInvoiceDate.getMonth()]} ${currentInvoiceDate.getFullYear()}`;
     }
 
-    function changeMonth(delta) {
-        saveData(false);
+    async function changeMonth(delta) {
+        await saveData(false);
         document.getElementById('invoiceContainer').innerHTML = "";
         currentInvoiceDate.setMonth(currentInvoiceDate.getMonth() + delta);
         updateMonthDisplay();
-        loadData();
+        await loadData();
         calcAll();
-    }
-
-    function checkDateMatch(input) {
-        const row = input.closest('.item-row');
-        const dateValue = new Date(input.value);
-        if (!isNaN(dateValue.getTime())) {
-            const matches = dateValue.getUTCMonth() === currentInvoiceDate.getMonth() && 
-                            dateValue.getUTCFullYear() === currentInvoiceDate.getFullYear();
-            if (!matches) { row.classList.add('date-error'); } 
-            else { row.classList.remove('date-error'); }
-        } else { row.classList.remove('date-error'); }
     }
 
     function toggleSection(id, btn) {
@@ -201,25 +196,20 @@
         const tr = document.createElement('tr');
         tr.className = "item-row";
         tr.innerHTML = `
-            <td><input type="date" value="${data?.date || ''}" onchange="checkDateMatch(this); calcAll()"></td>
+            <td><input type="date" value="${data?.date || ''}" onchange="calcAll()"></td>
             <td><input type="text" value="${data?.desc || ''}" placeholder="Enter service description..." spellcheck="true"></td>
             <td><input type="number" step="0.01" value="${data?.time || ''}" class="time-in" oninput="validateTimeStyle(this)" onchange="handleTimeRounding(this);calcAll()" placeholder="0.00"></td>
             <td class="row-total" style="text-align: right; padding-right: 10px;">$0.00</td>
             <td><button style="color:red; border:none; background:none; cursor:pointer; font-weight:bold;" onclick="this.parentElement.parentElement.remove(); calcAll()">X</button></td>
         `;
         document.getElementById(`body-${id}`).appendChild(tr);
-        if(data?.date) { setTimeout(() => checkDateMatch(tr.querySelector('input[type="date"]')), 10); }
     }
 
     function validateTimeStyle(input) {
         const val = parseFloat(input.value) || 0;
         const formatted = val.toFixed(2);
-        // Highlight red if it doesn't end in .x0
-        if (!formatted.endsWith('0')) {
-            input.classList.add('time-error');
-        } else {
-            input.classList.remove('time-error');
-        }
+        if (!formatted.endsWith('0')) { input.classList.add('time-error'); } 
+        else { input.classList.remove('time-error'); }
     }
 
     function handleTimeRounding(input) {
@@ -238,8 +228,6 @@
 
     function clearAllData() {
         if (confirm("Wipe all data for this month?")) {
-            const key = `invoice_data_${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
-            localStorage.removeItem(key);
             document.getElementById('invoiceContainer').innerHTML = "";
             calcAll();
         }
@@ -264,7 +252,7 @@
         document.getElementById('totalHours').innerText = grandHours.toFixed(2);
     }
 
-    function saveData(showAlert) {
+    async function saveData(showAlert) {
         const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({
             id: sec.id.replace('sec-', ''),
             category: sec.querySelector('.sec-title').innerText,
@@ -278,49 +266,38 @@
         }));
 
         const invoiceData = {
+            month_year: `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`,
             payee: document.getElementById('payeeName').value,
             firm: document.getElementById('firmName').value,
-            addressLine1: document.getElementById('addressLine1').value,
-            addressLine2: document.getElementById('addressLine2').value,
-            addressLine3: document.getElementById('addressLine3').value,
-            invNum: document.getElementById('invNum').value,
+            address1: document.getElementById('addressLine1').value,
+            address2: document.getElementById('addressLine2').value,
+            address3: document.getElementById('addressLine3').value,
+            inv_num: document.getElementById('invNum').value,
             sections: sections
         };
 
-        const key = `invoice_data_${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
-        localStorage.setItem(key, JSON.stringify(invoiceData));
-        
-        localStorage.setItem('user_profile', JSON.stringify({
-            payee: invoiceData.payee,
-            firm: invoiceData.firm,
-            addressLine1: invoiceData.addressLine1,
-            addressLine2: invoiceData.addressLine2,
-            addressLine3: invoiceData.addressLine3
-        }));
-
-        if (showAlert) alert("Progress saved for " + months[currentInvoiceDate.getMonth()] + "!");
+        const { error } = await supabaseClient.from('invoices').upsert(invoiceData);
+        if (error) { console.error("Cloud Save Error:", error); } 
+        else if (showAlert) { alert("Cloud sync successful!"); }
     }
 
-    function loadData() {
-        const profile = JSON.parse(localStorage.getItem('user_profile'));
-        if (profile) {
-            document.getElementById('payeeName').value = profile.payee || "";
-            document.getElementById('firmName').value = profile.firm || "";
-            document.getElementById('addressLine1').value = profile.addressLine1 || "";
-            document.getElementById('addressLine2').value = profile.addressLine2 || "";
-            document.getElementById('addressLine3').value = profile.addressLine3 || "";
+    async function loadData() {
+        const monthKey = `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
+        const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', monthKey).single();
+        if (data) {
+            document.getElementById('payeeName').value = data.payee || "";
+            document.getElementById('firmName').value = data.firm || "";
+            document.getElementById('addressLine1').value = data.address1 || "";
+            document.getElementById('addressLine2').value = data.address2 || "";
+            document.getElementById('addressLine3').value = data.address3 || "";
+            document.getElementById('invNum').value = data.inv_num || "";
+            data.sections.forEach(s => createSection(s));
         }
-
-        const key = `invoice_data_${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
-        const saved = JSON.parse(localStorage.getItem(key));
-        if (!saved) return;
-        
-        document.getElementById('invNum').value = saved.invNum || "";
-        saved.sections.forEach(s => createSection(s));
     }
 
     function exportToExcel() {
         let exportData = [];
+        let rowsMeta = [];
         exportData.push([document.getElementById('payeeName').value]);
         exportData.push([document.getElementById('firmName').value]);
         exportData.push([document.getElementById('addressLine1').value]);
@@ -330,27 +307,32 @@
         exportData.push(["Invoice Date:", document.getElementById('todayDate').innerText]);
         exportData.push(["Invoice #:", document.getElementById('invNum').value]);
         exportData.push([]);
+        for(let i=0; i<9; i++) rowsMeta.push({});
 
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
             const title = sec.querySelector('.sec-title').innerText;
             const rate = sec.querySelector('.sec-rate').value;
             const entity = sec.querySelector('.sec-entity')?.value || "N/A";
             exportData.push([title.toUpperCase(), "", "", "Rate per Hour:", `$${rate}`]);
-            if (entity !== "N/A") exportData.push(["Billing Entity:", entity]);
+            rowsMeta.push({});
+            if (entity !== "N/A") { exportData.push(["Billing Entity:", entity]); rowsMeta.push({ level: 1 }); }
             exportData.push(["Date", "Description", "Time", "Amount"]);
+            rowsMeta.push({ level: 1 });
             sec.querySelectorAll('.item-row').forEach(row => {
                 const cells = row.querySelectorAll('input');
                 exportData.push([cells[0].value, cells[1].value, cells[2].value, row.querySelector('.row-total').innerText]);
+                rowsMeta.push({ level: 1 });
             });
             exportData.push(["", "SUBTOTAL", sec.querySelector('.sec-time-total').innerText, sec.querySelector('.sec-price-total').innerText]);
-            exportData.push([]); 
+            rowsMeta.push({ level: 1 });
+            exportData.push([]); rowsMeta.push({});
         });
 
         exportData.push(["FINAL SUMMARY"]);
         exportData.push(["Total Hours:", document.getElementById('totalHours').innerText]);
         exportData.push(["Grand Total:", document.getElementById('grandTotal').innerText]);
-
         const ws = XLSX.utils.aoa_to_sheet(exportData);
+        ws['!rows'] = rowsMeta;
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Legal Invoice");
         XLSX.writeFile(wb, "Legal_Invoice_Export.xlsx");
