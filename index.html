@@ -92,7 +92,7 @@
 
     <div class="controls">
         <div style="display: flex; gap: 10px;">
-            <button class="btn btn-save" onclick="saveData()">Save Progress</button>
+            <button class="btn btn-save" onclick="saveData(true)">Save Progress</button>
             <button class="btn btn-clear" onclick="clearAllData()">Clear All</button>
             <button class="btn btn-excel" onclick="exportToExcel()">Export to Excel</button>
         </div>
@@ -105,6 +105,7 @@
 
 <script>
     let currentInvoiceDate = new Date(2026, 3);
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
     window.onload = () => { 
         document.getElementById('todayDate').innerText = new Date().toLocaleDateString();
@@ -113,18 +114,23 @@
     };
 
     function updateMonthDisplay() {
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         document.getElementById('currentMonthDisplay').innerText = `${months[currentInvoiceDate.getMonth()]} ${currentInvoiceDate.getFullYear()}`;
     }
 
     function changeMonth(delta) {
-        // When changing months, clear the billing container
-        if (confirm("Moving to a new month will clear the current billing data. Your header info will be saved. Continue?")) {
-            document.getElementById('invoiceContainer').innerHTML = "";
-            currentInvoiceDate.setMonth(currentInvoiceDate.getMonth() + delta);
-            updateMonthDisplay();
-            calcAll();
-        }
+        // Automatically save current month before moving
+        saveData(false);
+        
+        // Clear screen for the next month
+        document.getElementById('invoiceContainer').innerHTML = "";
+        
+        // Move date
+        currentInvoiceDate.setMonth(currentInvoiceDate.getMonth() + delta);
+        updateMonthDisplay();
+        
+        // Load data for the new month if it exists
+        loadData();
+        calcAll();
     }
 
     function validateAllDates() {
@@ -226,9 +232,11 @@
     }
 
     function clearAllData() {
-        if (confirm("Wipe all data and start a new invoice?")) {
-            localStorage.removeItem('invoice_data');
-            location.reload();
+        if (confirm("Wipe all data for this month?")) {
+            const key = `invoice_data_${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
+            localStorage.removeItem(key);
+            document.getElementById('invoiceContainer').innerHTML = "";
+            calcAll();
         }
     }
 
@@ -252,13 +260,11 @@
             sec.querySelector('.sec-price-total').innerText = `$${sPrice.toFixed(2)}`;
             grand += sPrice; grandHours += sTime;
         });
-        const grandDisplay = document.getElementById('grandTotal');
-        const hourDisplay = document.getElementById('totalHours');
-        if(grandDisplay) grandDisplay.innerText = `$${grand.toFixed(2)}`;
-        if(hourDisplay) hourDisplay.innerText = grandHours.toFixed(2);
+        document.getElementById('grandTotal').innerText = `$${grand.toFixed(2)}`;
+        document.getElementById('totalHours').innerText = grandHours.toFixed(2);
     }
 
-    function saveData() {
+    function saveData(showAlert) {
         const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({
             id: sec.id.replace('sec-', ''),
             category: sec.querySelector('.sec-title').innerText,
@@ -270,40 +276,55 @@
                 time: row.cells[2].querySelector('input').value
             }))
         }));
-        localStorage.setItem('invoice_data', JSON.stringify({
+
+        const invoiceData = {
             payee: document.getElementById('payeeName').value,
             firm: document.getElementById('firmName').value,
             addressLine1: document.getElementById('addressLine1').value,
             addressLine2: document.getElementById('addressLine2').value,
             addressLine3: document.getElementById('addressLine3').value,
             invNum: document.getElementById('invNum').value,
-            month: currentInvoiceDate.getMonth(),
-            year: currentInvoiceDate.getFullYear(),
             sections: sections
+        };
+
+        // Save with a month-specific key
+        const key = `invoice_data_${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
+        localStorage.setItem(key, JSON.stringify(invoiceData));
+        
+        // Also save profile info separately so it's global
+        localStorage.setItem('user_profile', JSON.stringify({
+            payee: invoiceData.payee,
+            firm: invoiceData.firm,
+            addressLine1: invoiceData.addressLine1,
+            addressLine2: invoiceData.addressLine2,
+            addressLine3: invoiceData.addressLine3
         }));
-        alert("Invoice progress saved!");
+
+        if (showAlert) alert("Progress saved for " + months[currentInvoiceDate.getMonth()] + "!");
     }
 
     function loadData() {
-        const saved = JSON.parse(localStorage.getItem('invoice_data'));
-        if (!saved) return;
-        document.getElementById('payeeName').value = saved.payee || "";
-        document.getElementById('firmName').value = saved.firm || "";
-        document.getElementById('addressLine1').value = saved.addressLine1 || "";
-        document.getElementById('addressLine2').value = saved.addressLine2 || "";
-        document.getElementById('addressLine3').value = saved.addressLine3 || "";
-        document.getElementById('invNum').value = saved.invNum || "";
-        if(saved.month !== undefined) {
-            currentInvoiceDate = new Date(saved.year, saved.month);
-            updateMonthDisplay();
+        // First, load the global profile info
+        const profile = JSON.parse(localStorage.getItem('user_profile'));
+        if (profile) {
+            document.getElementById('payeeName').value = profile.payee || "";
+            document.getElementById('firmName').value = profile.firm || "";
+            document.getElementById('addressLine1').value = profile.addressLine1 || "";
+            document.getElementById('addressLine2').value = profile.addressLine2 || "";
+            document.getElementById('addressLine3').value = profile.addressLine3 || "";
         }
+
+        // Then, load the month-specific billing data
+        const key = `invoice_data_${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
+        const saved = JSON.parse(localStorage.getItem(key));
+        if (!saved) return;
+        
+        document.getElementById('invNum').value = saved.invNum || "";
         saved.sections.forEach(s => createSection(s));
     }
 
     function exportToExcel() {
         let exportData = [];
-        let rowsMeta = [];
-
         exportData.push([document.getElementById('payeeName').value]);
         exportData.push([document.getElementById('firmName').value]);
         exportData.push([document.getElementById('addressLine1').value]);
@@ -318,16 +339,13 @@
             const title = sec.querySelector('.sec-title').innerText;
             const rate = sec.querySelector('.sec-rate').value;
             const entity = sec.querySelector('.sec-entity')?.value || "N/A";
-
             exportData.push([title.toUpperCase(), "", "", "Rate per Hour:", `$${rate}`]);
             if (entity !== "N/A") exportData.push(["Billing Entity:", entity]);
             exportData.push(["Date", "Description", "Time", "Amount"]);
-            
             sec.querySelectorAll('.item-row').forEach(row => {
                 const cells = row.querySelectorAll('input');
                 exportData.push([cells[0].value, cells[1].value, cells[2].value, row.querySelector('.row-total').innerText]);
             });
-
             exportData.push(["", "SUBTOTAL", sec.querySelector('.sec-time-total').innerText, sec.querySelector('.sec-price-total').innerText]);
             exportData.push([]); 
         });
