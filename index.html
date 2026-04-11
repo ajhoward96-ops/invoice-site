@@ -59,7 +59,7 @@
         <span class="nav-arrow" onclick="changeMonth(1)">&#10095;</span>
     </div>
 
-    <div class="payee-info">
+    <div class="payee-info" id="payeeSection">
         <div class="header-grid">
             <div>
                 <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 28px; font-weight: bold;">
@@ -96,7 +96,7 @@
             <button class="btn btn-clear" onclick="clearAllData()">Clear All</button>
             <button class="btn btn-excel" onclick="exportToExcel()">Export to Excel</button>
         </div>
-        <div class="grand-total-box">
+        <div class="grand-total-box" id="finalTotals">
             <div>Total Hours: <span id="totalHours">0.00</span></div>
             <div>Grand Total: <span id="grandTotal">$0.00</span></div>
         </div>
@@ -145,10 +145,10 @@
         const content = document.getElementById('content-' + id);
         if (content.style.display === 'none') {
             content.style.display = 'block';
-            btn.innerHTML = '&#9660;'; // Down arrow
+            btn.innerHTML = '&#9660;';
         } else {
             content.style.display = 'none';
-            btn.innerHTML = '&#9658;'; // Right arrow
+            btn.innerHTML = '&#9658;';
         }
     }
 
@@ -170,7 +170,7 @@
             <div class="section-bar">
                 <div style="display: flex; align-items: center;">
                     <span class="toggle-btn" onclick="toggleSection('${id}', this)">&#9660;</span>
-                    <span>${cat}</span>
+                    <span class="sec-title">${cat}</span>
                 </div>
                 <div class="right-controls">
                     <div>Per Hour Rate: $<input type="number" class="sec-rate" value="${savedData?.rate || 0}" style="width: 60px;" oninput="calcAll()"></div>
@@ -255,7 +255,7 @@
     function saveData() {
         const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({
             id: sec.id.replace('sec-', ''),
-            category: sec.querySelector('.section-bar span:nth-child(2)').innerText,
+            category: sec.querySelector('.sec-title').innerText,
             entityName: sec.querySelector('.sec-entity')?.value || "",
             rate: sec.querySelector('.sec-rate').value,
             rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({
@@ -295,9 +295,55 @@
     }
 
     function exportToExcel() {
-        const ws = XLSX.utils.table_to_sheet(document.getElementById('invoiceContainer'));
+        let exportData = [];
+
+        // 1. Payee Info
+        exportData.push([document.getElementById('payeeName').value]);
+        exportData.push([document.getElementById('firmName').value]);
+        exportData.push([document.getElementById('addressLine1').value]);
+        exportData.push([document.getElementById('addressLine2').value]);
+        exportData.push([document.getElementById('addressLine3').value]);
+        exportData.push([]);
+        exportData.push(["Invoice Date:", document.getElementById('todayDate').innerText]);
+        exportData.push(["Invoice #:", document.getElementById('invNum').value]);
+        exportData.push([]);
+
+        // 2. Sections
+        document.querySelectorAll('[id^="sec-"]').forEach(sec => {
+            const title = sec.querySelector('.sec-title').innerText;
+            const rate = sec.querySelector('.sec-rate').value;
+            const entity = sec.querySelector('.sec-entity')?.value || "N/A";
+
+            exportData.push([title.toUpperCase(), "", "", "Rate per Hour:", `$${rate}`]);
+            if (entity !== "N/A") exportData.push(["Billing Entity:", entity]);
+            
+            exportData.push(["Date", "Description", "Time", "Amount"]);
+            
+            sec.querySelectorAll('.item-row').forEach(row => {
+                const cells = row.querySelectorAll('input');
+                exportData.push([
+                    cells[0].value, 
+                    cells[1].value, 
+                    cells[2].value, 
+                    row.querySelector('.row-total').innerText
+                ]);
+            });
+
+            exportData.push(["", "SUBTOTAL", sec.querySelector('.sec-time-total').innerText, sec.querySelector('.sec-price-total').innerText]);
+            exportData.push([]); // Gap between sections
+        });
+
+        // 3. Final Grand Totals
+        exportData.push(["FINAL SUMMARY"]);
+        exportData.push(["Total Hours:", document.getElementById('totalHours').innerText]);
+        exportData.push(["Grand Total:", document.getElementById('grandTotal').innerText]);
+
+        // Create sheet
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Legal Invoice");
+        
+        // Save file
         XLSX.writeFile(wb, "Legal_Invoice_Export.xlsx");
     }
 </script>
