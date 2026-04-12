@@ -329,11 +329,11 @@
 <div class="container">
     <div id="masterTopBar">
         <div class="nav-group">
-            <button class="btn btn-nav-blue" onclick="openAssistance()">User Assistance</button>
+            <button class="btn btn-nav-blue" id="btnUserAssistance" style="display:none;" onclick="openAssistance()">User Assistance</button>
         </div>
         <div class="nav-group">
-            <button class="btn btn-nav-grey" onclick="alert('Data Vault section coming next...')">Data Vault</button>
-            <button class="btn btn-nav-red" onclick="logoutSession()">Logout</button>
+            <button class="btn btn-nav-grey" id="btnDataVault" style="display:none;" onclick="alert('Data Vault section coming next...')">Data Vault</button>
+            <button class="btn btn-nav-red" onclick="location.reload()">Logout</button>
         </div>
     </div>
 
@@ -480,7 +480,7 @@
 </div>
 
 <script>
-    /* --- CONFIG & STATE --- */
+    /* --- CONFIG & DATABASE --- */
     const SUPABASE_URL = 'https://cfliviopdogrljkxzuaa.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -494,6 +494,76 @@
     window.onload = function() {
         document.getElementById('todayDateDisplay').innerText = new Date().toLocaleDateString();
     };
+
+    /* --- AUTHENTICATION --- */
+    function toggleNewUserFields() {
+        isRegistrationMode = !isRegistrationMode;
+        document.getElementById('profileFields').style.display = isRegistrationMode ? "block" : "none";
+        document.querySelector('.new-user-toggle').innerText = isRegistrationMode ? "Cancel Registration" : "New User";
+    }
+
+    async function handleLogin() {
+        const code = document.getElementById('accessCode').value.trim();
+        if (!code) return;
+
+        currentUserCode = code;
+
+        // Finance Admin Login Flow
+        if (code.toUpperCase() === "FINANCE2026") {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
+            // Admin gets all administrative buttons
+            document.getElementById('btnUserAssistance').style.display = "block";
+            document.getElementById('btnDataVault').style.display = "block";
+            loadFinanceView();
+            return;
+        }
+
+        // Lawyer Registration Flow
+        if (isRegistrationMode) {
+            document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
+            document.getElementById('firmName').value = document.getElementById('setupFirm').value;
+            document.getElementById('address1').value = document.getElementById('setupAddress1').value;
+            document.getElementById('address2').value = document.getElementById('setupAddress2').value;
+            document.getElementById('address3').value = document.getElementById('setupAddress3').value;
+            
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
+            // Lawyer ONLY sees Logout
+            document.getElementById('btnUserAssistance').style.display = "none";
+            document.getElementById('btnDataVault').style.display = "none";
+            document.getElementById('invoiceView').style.display = "block";
+            renderMonthLabel();
+            calculateInvoices();
+            return;
+        }
+
+        // Existing Lawyer Login Flow
+        const { data } = await supabaseClient.from('invoices').select('*').eq('user_code', code);
+        
+        if (data && data.length > 0) {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
+            // Lawyer ONLY sees Logout
+            document.getElementById('btnUserAssistance').style.display = "none";
+            document.getElementById('btnDataVault').style.display = "none";
+            document.getElementById('invoiceView').style.display = "block";
+            
+            // Kickback Check logic
+            const kicked = data.find(function(inv) { return inv.status === 'Sent Back'; });
+            if (kicked) {
+                const monthInfo = kicked.month_year.split('_')[0];
+                const yearInfo = kicked.month_year.split('_')[1];
+                alert("Notice: Your invoice for " + monthInfo + " " + yearInfo + " has been sent back for corrections.");
+                currentInvoiceDate = new Date(parseInt(yearInfo), months.indexOf(monthInfo));
+            }
+            
+            renderMonthLabel();
+            loadUserData();
+        } else {
+            alert("Access Key not found. Please click 'New User' to register.");
+        }
+    }
 
     /* --- USER ASSISTANCE --- */
     function openAssistance() {
@@ -521,9 +591,10 @@
         resultsDiv.innerHTML = "";
 
         if (data && data.length > 0) {
+            // Group by User Code
             const uniqueLawyers = [...new Map(data.map(item => [item['user_code'], item])).values()];
             
-            uniqueLawyers.forEach(lawyer => {
+            uniqueLawyers.forEach(function(lawyer) {
                 const item = document.createElement('div');
                 item.className = "result-item";
                 item.innerHTML = `
@@ -544,72 +615,7 @@
         }
     }
 
-    /* --- AUTH UI --- */
-    function toggleNewUserFields() {
-        isRegistrationMode = !isRegistrationMode;
-        document.getElementById('profileFields').style.display = isRegistrationMode ? "block" : "none";
-        document.querySelector('.new-user-toggle').innerText = isRegistrationMode ? "Cancel Registration" : "New User";
-    }
-
-    async function handleLogin() {
-        const code = document.getElementById('accessCode').value.trim();
-        if (!code) return;
-
-        currentUserCode = code;
-
-        if (code.toUpperCase() === "FINANCE2026") {
-            document.getElementById('loginOverlay').style.display = "none";
-            document.getElementById('masterTopBar').style.display = "flex";
-            loadFinanceView();
-            return;
-        }
-
-        if (isRegistrationMode) {
-            setupNewProfile();
-            return;
-        }
-
-        const { data } = await supabaseClient.from('invoices').select('*').eq('user_code', code);
-        
-        if (data && data.length > 0) {
-            document.getElementById('loginOverlay').style.display = "none";
-            document.getElementById('masterTopBar').style.display = "flex";
-            document.getElementById('invoiceView').style.display = "block";
-            
-            const kicked = data.find(function(inv) { return inv.status === 'Sent Back'; });
-            if (kicked) {
-                const mInfo = kicked.month_year.split('_')[0];
-                const yInfo = kicked.month_year.split('_')[1];
-                alert("Notice: Your invoice for " + mInfo + " " + yInfo + " has been sent back for corrections.");
-                currentInvoiceDate = new Date(parseInt(yInfo), months.indexOf(mInfo));
-            }
-            
-            renderMonthLabel();
-            loadUserData();
-        } else {
-            alert("Access Key not found. Please click 'New User' to register.");
-        }
-    }
-
-    function setupNewProfile() {
-        document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
-        document.getElementById('firmName').value = document.getElementById('setupFirm').value;
-        document.getElementById('address1').value = document.getElementById('setupAddress1').value;
-        document.getElementById('address2').value = document.getElementById('setupAddress2').value;
-        document.getElementById('address3').value = document.getElementById('setupAddress3').value;
-        
-        document.getElementById('loginOverlay').style.display = "none";
-        document.getElementById('masterTopBar').style.display = "flex";
-        document.getElementById('invoiceView').style.display = "block";
-        renderMonthLabel();
-        calculateInvoices();
-    }
-
-    function logoutSession() {
-        location.reload(); 
-    }
-
-    /* --- DASHBOARD NAVIGATION --- */
+    /* --- MONTH CONTROL --- */
     function renderMonthLabel() { 
         const labelText = months[currentInvoiceDate.getMonth()] + " " + currentInvoiceDate.getFullYear();
         document.getElementById('currentMonthDisplay').innerText = labelText;
@@ -632,6 +638,7 @@
         }
     }
 
+    /* --- FINANCE DASHBOARD --- */
     async function loadFinanceView() {
         document.getElementById('masterDashboard').style.display = "block";
         document.getElementById('invoiceView').style.display = "none";
@@ -693,7 +700,7 @@
         loadFinanceView();
     }
 
-    /* --- INVOICE ENGINE --- */
+    /* --- INVOICE BUILDER --- */
     function createNewInvoiceSection(saved = null) {
         const id = saved ? saved.id : Date.now();
         const cat = saved ? saved.category : document.getElementById('categorySelector').value;
@@ -781,6 +788,7 @@
             const rate = parseFloat(section.querySelector('.rate-box').value) || 0;
             
             section.querySelectorAll('.item-row').forEach(function(row) {
+                // DATE MISMATCH
                 const dInput = row.querySelector('.date-check');
                 if (dInput.value) {
                     const eD = new Date(dInput.value + 'T00:00:00');
@@ -791,6 +799,7 @@
                     }
                 }
 
+                // PRECISION ROUNDING
                 const tInput = row.querySelector('.time-field');
                 let tNum = parseFloat(tInput.value) || 0;
                 if (tNum > 0) {
@@ -890,6 +899,7 @@
         const { error } = await supabaseClient.from('invoices').upsert(payload, { onConflict: 'month_year' });
         if (!error) {
             alert("Corrections Resubmitted!");
+            // Stay logged in refresh
             loadUserData();
         }
     }
