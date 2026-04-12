@@ -9,14 +9,12 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; color: #1c1e21; }
         .container { max-width: 1200px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
-        /* Login Overlay */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .login-box input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 15px; }
         #profileFields { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; text-align: left; }
         #profileFields label { font-size: 11px; font-weight: bold; color: #e67e22; text-transform: uppercase; }
 
-        /* Master Dashboard */
         #masterDashboard { display: none; }
         .dash-header { background: #2c3e50; color: white; padding: 25px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
         .invoice-list { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
@@ -24,7 +22,6 @@
         .invoice-row td { padding: 20px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
         .invoice-row td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; font-weight: bold; color: #007bff; cursor: pointer; }
 
-        /* Invoice Engine */
         #invoiceView { display: none; }
         .month-nav { display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 25px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
         .nav-arrow { font-size: 24px; cursor: pointer; user-select: none; padding: 5px 15px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
@@ -61,7 +58,6 @@
     <div class="login-box">
         <h2>Secure Legal Portal</h2>
         <input type="password" id="accessCode" placeholder="Enter Access Code" oninput="checkCodeType()">
-        
         <div id="profileFields">
             <label>New User Profile Setup</label>
             <input type="text" id="setupPayee" placeholder="Your Full Name (Payee)">
@@ -70,26 +66,19 @@
             <input type="text" id="setupAddress2" placeholder="Apt / Bldg / Suite #">
             <input type="text" id="setupAddress3" placeholder="City, State, Zip">
         </div>
-        
         <button class="btn btn-save" style="width:100%; margin-top:15px;" onclick="attemptLogin()">Login to System</button>
     </div>
 </div>
 
 <div class="container">
     <div id="masterDashboard">
-        <div class="dash-header">
-            <h1>Master Access Dashboard</h1>
-            <p>Viewing and editing all cloud logs</p>
-        </div>
-        <h3>Pending Submissions</h3>
-        <table class="invoice-list"><tbody id="pendingList"></tbody></table>
-        <h3 style="margin-top:50px; color: #27ae60;">✅ Paid Archive</h3>
-        <table class="invoice-list"><tbody id="paidList"></tbody></table>
+        <div class="dash-header"><h1>Master Access Dashboard</h1><p>Viewing and editing all cloud logs</p></div>
+        <h3>Pending Submissions</h3><table class="invoice-list"><tbody id="pendingList"></tbody></table>
+        <h3 style="margin-top:50px; color: #27ae60;">✅ Paid Archive</h3><table class="invoice-list"><tbody id="paidList"></tbody></table>
     </div>
 
     <div id="invoiceView">
         <button onclick="location.reload()" id="backBtn" style="display:none; margin-bottom:20px;">⬅ Back to Dashboard</button>
-        
         <div class="month-nav">
             <span class="nav-arrow" onclick="changeMonth(-1)">&#10094;</span>
             <h2 id="currentMonthDisplay">April 2026</h2>
@@ -127,14 +116,8 @@
         </div>
 
         <div style="margin-top:40px; display:flex; justify-content:space-between; align-items:center; border-top: 2px solid #eee; padding-top:25px;">
-            <div style="display:flex; gap:12px;">
-                <button class="btn btn-save" onclick="saveData(true)">Sync Progress</button>
-                <button class="btn btn-excel" onclick="exportToExcel()">Export Excel</button>
-            </div>
-            <div class="grand-total-box">
-                <div>Hours: <span id="totalHours">0.00</span></div>
-                <div>Total: <span id="grandTotal">$0.00</span></div>
-            </div>
+            <div style="display:flex; gap:12px;"><button class="btn btn-save" onclick="saveData(true)">Sync Progress</button><button class="btn btn-excel" onclick="exportToExcel()">Export Excel</button></div>
+            <div class="grand-total-box"><div>Hours: <span id="totalHours">0.00</span></div><div>Total: <span id="grandTotal">$0.00</span></div></div>
         </div>
     </div>
 </div>
@@ -144,9 +127,7 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    let currentUserCode = "";
-    let isAdmin = false;
-    let isNewUser = false;
+    let currentUserCode = ""; let isAdmin = false; let isNewUser = false;
     let currentInvoiceDate = new Date(2026, 3);
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -154,25 +135,16 @@
 
     async function checkCodeType() {
         const code = document.getElementById('accessCode').value.trim().toUpperCase();
-        if (code === "FINANCE2026" || code.length < 3) {
-            document.getElementById('profileFields').style.display = "none";
-            return;
-        }
+        if (code === "FINANCE2026" || code.length < 3) { document.getElementById('profileFields').style.display = "none"; return; }
         const { data } = await supabaseClient.from('invoices').select('user_code').eq('user_code', code).limit(1);
         isNewUser = (!data || data.length === 0);
         document.getElementById('profileFields').style.display = isNewUser ? "block" : "none";
     }
 
     async function attemptLogin() {
-        const code = document.getElementById('accessCode').value.trim();
-        if (!code) return;
-        currentUserCode = code;
-        document.getElementById('loginOverlay').style.display = "none";
-
-        if (code.toUpperCase() === "FINANCE2026") {
-            isAdmin = true;
-            loadDashboard();
-        } else {
+        const code = document.getElementById('accessCode').value.trim(); if (!code) return;
+        currentUserCode = code; document.getElementById('loginOverlay').style.display = "none";
+        if (code.toUpperCase() === "FINANCE2026") { isAdmin = true; loadDashboard(); } else {
             if (isNewUser) {
                 document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
                 document.getElementById('firmName').value = document.getElementById('setupFirm').value;
@@ -182,85 +154,45 @@
             }
             document.getElementById('invoiceView').style.display = "block";
             document.getElementById('userLabel').innerText = "Logged in as: " + code;
-            updateMonthDisplay();
-            await loadData();
+            updateMonthDisplay(); await loadData();
         }
     }
 
-    function updateMonthDisplay() {
-        document.getElementById('currentMonthDisplay').innerText = `${months[currentInvoiceDate.getMonth()]} ${currentInvoiceDate.getFullYear()}`;
-    }
+    function updateMonthDisplay() { document.getElementById('currentMonthDisplay').innerText = `${months[currentInvoiceDate.getMonth()]} ${currentInvoiceDate.getFullYear()}`; }
 
     async function changeMonth(delta) {
-        await saveData(false);
-        document.getElementById('invoiceContainer').innerHTML = "";
+        await saveData(false); document.getElementById('invoiceContainer').innerHTML = "";
         currentInvoiceDate.setMonth(currentInvoiceDate.getMonth() + delta);
-        updateMonthDisplay();
-        await loadData();
+        updateMonthDisplay(); await loadData();
     }
 
     async function loadDashboard() {
         document.getElementById('masterDashboard').style.display = "block";
         document.getElementById('invoiceView').style.display = "none";
         const { data } = await supabaseClient.from('invoices').select('*').order('updated_at', {ascending: false});
-        const pList = document.getElementById('pendingList');
-        const aList = document.getElementById('paidList');
+        const pList = document.getElementById('pendingList'); const aList = document.getElementById('paidList');
         pList.innerHTML = ""; aList.innerHTML = "";
-
         data.forEach(inv => {
-            const row = `<tr class="invoice-row">
-                <td onclick="loadAdminView('${inv.month_year}')">${inv.payee || 'Unnamed Lawyer'}</td>
-                <td>${new Date(inv.updated_at).toLocaleDateString()}</td>
-                <td style="text-align:right">
-                    ${inv.status !== 'Paid' ? `
-                        <label><input type="checkbox" onchange="document.getElementById('b-${inv.month_year}').style.display = this.checked ? 'inline-block' : 'none'"> Correct</label>
-                        <button id="b-${inv.month_year}" class="btn-paid" onclick="setStatus('${inv.month_year}', 'Paid')">Paid</button>
-                        <button class="btn-kickback" onclick="setStatus('${inv.month_year}', 'Sent Back')">Kickback</button>
-                    ` : '<span style="color:green; font-weight:bold;">PROCESSED</span>'}
-                </td></tr>`;
+            const row = `<tr class="invoice-row"><td onclick="loadAdminView('${inv.month_year}')">${inv.payee || 'Unnamed Lawyer'}</td><td>${new Date(inv.updated_at).toLocaleDateString()}</td><td style="text-align:right">${inv.status !== 'Paid' ? `<label><input type="checkbox" onchange="document.getElementById('b-${inv.month_year}').style.display = this.checked ? 'inline-block' : 'none'"> Correct</label><button id="b-${inv.month_year}" class="btn-paid" onclick="setStatus('${inv.month_year}', 'Paid')">Paid</button><button class="btn-kickback" onclick="setStatus('${inv.month_year}', 'Sent Back')">Kickback</button>` : '<span style="color:green; font-weight:bold;">PROCESSED</span>'}</td></tr>`;
             if (inv.status === 'Paid') aList.innerHTML += row; else pList.innerHTML += row;
         });
     }
 
-    async function setStatus(id, s) {
-        await supabaseClient.from('invoices').update({ status: s }).eq('month_year', id);
-        loadDashboard();
-    }
+    async function setStatus(id, s) { await supabaseClient.from('invoices').update({ status: s }).eq('month_year', id); loadDashboard(); }
 
     function createSection(saved = null) {
         const id = saved ? saved.id : Date.now();
         const cat = saved ? saved.category : document.getElementById('categorySelector').value;
-        const sec = document.createElement('div');
-        sec.id = `sec-${id}`;
-        sec.style.marginBottom = "40px";
-        sec.innerHTML = `
-            <div class="section-bar">
-                <span>${cat}</span> 
-                <div style="display:flex; align-items:center;">
-                    Rate: $<input type="number" class="rate" value="${saved?.rate || 0}" style="width:55px; color:white;" oninput="calcAll()">
-                    <button class="btn-del-sec" onclick="deleteSection('${id}')">Delete</button>
-                </div>
-            </div>
-            <table><tbody id="body-${id}"></tbody>
-                <tr class="total-row"><td colspan="2" style="text-align:right; padding:12px;">Subtotal</td><td id="t-${id}" style="text-align:center; width:100px;">0.00</td><td id="p-${id}" style="text-align:right; padding-right:15px; width:130px;">$0.00</td></tr>
-            </table>
-            <button class="btn btn-add" style="font-size:12px; background:#6c757d;" onclick="addRow('${id}')">+ Add Line Item</button>
-        `;
+        const sec = document.createElement('div'); sec.id = `sec-${id}`; sec.style.marginBottom = "40px";
+        sec.innerHTML = `<div class="section-bar"><span>${cat}</span><div style="display:flex; align-items:center;">Rate: $<input type="number" class="rate" value="${saved?.rate || 0}" style="width:55px; color:white;" oninput="calcAll()"><button class="btn-del-sec" onclick="deleteSection('${id}')">Delete</button></div></div><table><tbody id="body-${id}"></tbody><tr class="total-row"><td colspan="2" style="text-align:right; padding:12px;">Subtotal</td><td id="t-${id}" style="text-align:center; width:100px;">0.00</td><td id="p-${id}" style="text-align:right; padding-right:15px; width:130px;">$0.00</td></tr></table><button class="btn btn-add" style="font-size:12px; background:#6c757d;" onclick="addRow('${id}')">+ Add Line Item</button>`;
         document.getElementById('invoiceContainer').appendChild(sec);
         if (saved) saved.rows.forEach(r => addRow(id, r)); else addRow(id);
     }
 
     function addRow(id, data = null) {
-        const tr = document.createElement('tr');
-        tr.className = "item-row";
-        tr.innerHTML = `
-            <td style="width:160px;"><input type="date" value="${data?.date || ''}" onchange="calcAll()"></td>
-            <td><input type="text" value="${data?.desc || ''}" placeholder="Service Description" spellcheck="true"></td>
-            <td style="width:100px;"><input type="number" step="0.01" class="time" value="${data?.time || ''}" onchange="this.value=(Math.round(this.value*10)/10).toFixed(2);calcAll()"></td>
-            <td class="r-total" style="text-align:right; padding-right:15px; width:130px;">$0.00</td>
-        `;
-        document.getElementById(`body-${id}`).appendChild(tr);
-        calcAll();
+        const tr = document.createElement('tr'); tr.className = "item-row";
+        tr.innerHTML = `<td style="width:160px;"><input type="date" value="${data?.date || ''}" onchange="calcAll()"></td><td><input type="text" value="${data?.desc || ''}" placeholder="Service Description" spellcheck="true"></td><td style="width:100px;"><input type="number" step="0.01" class="time" value="${data?.time || ''}" onchange="this.value=(Math.round(this.value*10)/10).toFixed(2);calcAll()"></td><td class="r-total" style="text-align:right; padding-right:15px; width:130px;">$0.00</td>`;
+        document.getElementById(`body-${id}`).appendChild(tr); calcAll();
     }
 
     function deleteSection(id) { if (confirm("Remove this section?")) { document.getElementById(`sec-${id}`).remove(); calcAll(); } }
@@ -268,108 +200,59 @@
     function calcAll() {
         let gH = 0, gP = 0;
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
-            let sH = 0, sP = 0;
-            const rate = parseFloat(sec.querySelector('.rate').value) || 0;
+            let sH = 0, sP = 0; const rate = parseFloat(sec.querySelector('.rate').value) || 0;
             sec.querySelectorAll('.item-row').forEach(row => {
-                const t = parseFloat(row.querySelector('.time').value) || 0;
-                const total = t * rate;
-                row.querySelector('.r-total').innerText = `$${total.toFixed(2)}`;
-                sH += t; sP += total;
+                const t = parseFloat(row.querySelector('.time').value) || 0; const total = t * rate;
+                row.querySelector('.r-total').innerText = `$${total.toFixed(2)}`; sH += t; sP += total;
             });
             const id = sec.id.replace('sec-', '');
-            document.getElementById(`t-${id}`).innerText = sH.toFixed(2);
-            document.getElementById(`p-${id}`).innerText = `$${sP.toFixed(2)}`;
-            gH += sH; gP += sP;
+            document.getElementById(`t-${id}`).innerText = sH.toFixed(2); document.getElementById(`p-${id}`).innerText = `$${sP.toFixed(2)}`; gH += sH; gP += sP;
         });
-        document.getElementById('totalHours').innerText = gH.toFixed(2);
-        document.getElementById('grandTotal').innerText = `$${gP.toFixed(2)}`;
+        document.getElementById('totalHours').innerText = gH.toFixed(2); document.getElementById('grandTotal').innerText = `$${gP.toFixed(2)}`;
     }
 
     async function saveData(alertMe) {
-        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({
-            id: sec.id.replace('sec-', ''),
-            category: sec.querySelector('.section-bar span').innerText,
-            rate: sec.querySelector('.rate').value,
-            rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({
-                date: row.cells[0].querySelector('input').value,
-                desc: row.cells[1].querySelector('input').value,
-                time: row.cells[2].querySelector('input').value
-            }))
-        }));
-        const payload = {
-            month_year: `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`,
-            user_code: currentUserCode,
-            payee: document.getElementById('payeeName').value,
-            firm: document.getElementById('firmName').value,
-            address1: document.getElementById('address1').value,
-            address2: document.getElementById('address2').value,
-            address3: document.getElementById('address3').value,
-            inv_num: document.getElementById('invNum').value,
-            sections: sections
-        };
-        await supabaseClient.from('invoices').upsert(payload);
-        if (alertMe) alert("Cloud Sync Successful!");
+        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({id: sec.id.replace('sec-', ''), category: sec.querySelector('.section-bar span').innerText, rate: sec.querySelector('.rate').value, rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({date: row.cells[0].querySelector('input').value, desc: row.cells[1].querySelector('input').value, time: row.cells[2].querySelector('input').value })) }));
+        const payload = {month_year: `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`, user_code: currentUserCode, payee: document.getElementById('payeeName').value, firm: document.getElementById('firmName').value, address1: document.getElementById('address1').value, address2: document.getElementById('address2').value, address3: document.getElementById('address3').value, inv_num: document.getElementById('invNum').value, sections: sections };
+        await supabaseClient.from('invoices').upsert(payload); if (alertMe) alert("Cloud Sync Successful!");
     }
 
     async function loadData() {
         const key = `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`;
         const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', key).single();
         if (data) {
-            document.getElementById('payeeName').value = data.payee || "";
-            document.getElementById('firmName').value = data.firm || "";
-            document.getElementById('address1').value = data.address1 || "";
-            document.getElementById('address2').value = data.address2 || "";
-            document.getElementById('address3').value = data.address3 || "";
-            document.getElementById('invNum').value = data.inv_num || "";
+            document.getElementById('payeeName').value = data.payee || ""; document.getElementById('firmName').value = data.firm || "";
+            document.getElementById('address1').value = data.address1 || ""; document.getElementById('address2').value = data.address2 || "";
+            document.getElementById('address3').value = data.address3 || ""; document.getElementById('invNum').value = data.inv_num || "";
+            document.getElementById('invoiceContainer').innerHTML = ""; data.sections.forEach(s => createSection(s));
+        } else {
+            // New User or New Month: Clear container instead of adding a default section
             document.getElementById('invoiceContainer').innerHTML = "";
-            data.sections.forEach(s => createSection(s));
-        } else { createSection(); }
+        }
     }
 
     async function loadAdminView(id) {
-        document.getElementById('masterDashboard').style.display = "none";
-        document.getElementById('invoiceView').style.display = "block";
-        document.getElementById('backBtn').style.display = "block";
-        document.getElementById('invoiceContainer').innerHTML = "";
+        document.getElementById('masterDashboard').style.display = "none"; document.getElementById('invoiceView').style.display = "block";
+        document.getElementById('backBtn').style.display = "block"; document.getElementById('invoiceContainer').innerHTML = "";
         const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', id).single();
         if (data) {
-            document.getElementById('payeeName').value = data.payee;
-            document.getElementById('firmName').value = data.firm;
-            document.getElementById('address1').value = data.address1;
-            document.getElementById('address2').value = data.address2;
-            document.getElementById('address3').value = data.address3;
-            document.getElementById('invNum').value = data.inv_num;
-            data.sections.forEach(s => createSection(s));
-            calcAll();
+            document.getElementById('payeeName').value = data.payee; document.getElementById('firmName').value = data.firm;
+            document.getElementById('address1').value = data.address1; document.getElementById('address2').value = data.address2;
+            document.getElementById('address3').value = data.address3; document.getElementById('invNum').value = data.inv_num;
+            data.sections.forEach(s => createSection(s)); calcAll();
         }
     }
 
     function exportToExcel() {
-        let exportData = [
-            [document.getElementById('payeeName').value],
-            [document.getElementById('firmName').value],
-            [document.getElementById('address1').value],
-            [document.getElementById('address2').value],
-            [document.getElementById('address3').value],
-            [],
-            ["Invoice Date:", document.getElementById('todayDate').innerText],
-            ["Invoice #:", document.getElementById('invNum').value],
-            []
-        ];
+        let exportData = [[document.getElementById('payeeName').value], [document.getElementById('firmName').value], [document.getElementById('address1').value], [document.getElementById('address2').value], [document.getElementById('address3').value], [], ["Invoice Date:", document.getElementById('todayDate').innerText], ["Invoice #:", document.getElementById('invNum').value], []];
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
             exportData.push([sec.querySelector('.section-bar span').innerText.toUpperCase(), "", "", "Rate:", `$${sec.querySelector('.rate').value}`]);
             exportData.push(["Date", "Description", "Time", "Amount"]);
-            sec.querySelectorAll('.item-row').forEach(row => {
-                const cells = row.querySelectorAll('input');
-                exportData.push([cells[0].value, cells[1].value, cells[2].value, row.querySelector('.r-total').innerText]);
-            });
+            sec.querySelectorAll('.item-row').forEach(row => { const cells = row.querySelectorAll('input'); exportData.push([cells[0].value, cells[1].value, cells[2].value, row.querySelector('.r-total').innerText]); });
             exportData.push(["", "SUBTOTAL", sec.querySelector(`[id^="t-"]`).innerText, sec.querySelector(`[id^="p-"]`).innerText], []);
         });
         exportData.push(["FINAL SUMMARY"], ["Total Hours:", document.getElementById('totalHours').innerText], ["Grand Total:", document.getElementById('grandTotal').innerText]);
-        const ws = XLSX.utils.aoa_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Invoice");
-        XLSX.writeFile(wb, `Invoice_${currentUserCode}.xlsx`);
+        const ws = XLSX.utils.aoa_to_sheet(exportData); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Invoice"); XLSX.writeFile(wb, `Invoice_${currentUserCode}.xlsx`);
     }
 </script>
 </body>
