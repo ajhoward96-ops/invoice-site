@@ -9,12 +9,14 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; color: #1c1e21; }
         .container { max-width: 1200px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
+        /* Login Overlay */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .login-box input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 15px; }
         #profileFields { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; text-align: left; }
         #profileFields label { font-size: 11px; font-weight: bold; color: #e67e22; text-transform: uppercase; }
 
+        /* Dashboard */
         #masterDashboard { display: none; }
         .dash-header { background: #2c3e50; color: white; padding: 25px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
         .invoice-list { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
@@ -22,6 +24,7 @@
         .invoice-row td { padding: 20px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
         .invoice-row td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; font-weight: bold; color: #007bff; cursor: pointer; }
 
+        /* Invoice Engine */
         #invoiceView { display: none; }
         .month-nav { display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 25px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
         .nav-arrow { font-size: 24px; cursor: pointer; user-select: none; padding: 5px 15px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
@@ -42,7 +45,8 @@
         .grand-total-box { border: 2px solid #2c3e50; padding: 15px 25px; font-size: 1.4em; font-weight: bold; background: #fff; border-radius: 8px; display: flex; gap: 40px; }
         
         .btn { padding: 12px 24px; cursor: pointer; font-weight: bold; border: none; border-radius: 4px; transition: 0.2s; }
-        .btn-save { background: #27ae60; color: white; }
+        .btn-save { background: #6c757d; color: white; }
+        .btn-submit { background: #27ae60; color: white; }
         .btn-add { background: #007bff; color: white; margin-top: 10px; }
         .btn-excel { background: #1f6e43; color: white; }
         .btn-paid { background: #28a745; color: white; display: none; margin-left: 10px; padding: 8px 15px; }
@@ -66,7 +70,7 @@
             <input type="text" id="setupAddress2" placeholder="Apt / Bldg / Suite #">
             <input type="text" id="setupAddress3" placeholder="City, State, Zip">
         </div>
-        <button class="btn btn-save" style="width:100%; margin-top:15px;" onclick="attemptLogin()">Login to System</button>
+        <button class="btn btn-submit" style="width:100%; margin-top:15px;" onclick="attemptLogin()">Login to System</button>
     </div>
 </div>
 
@@ -84,7 +88,6 @@
             <h2 id="currentMonthDisplay">April 2026</h2>
             <span class="nav-arrow" onclick="changeMonth(1)">&#10095;</span>
         </div>
-
         <div class="payee-info">
             <div class="header-grid">
                 <div>
@@ -101,9 +104,7 @@
                 </div>
             </div>
         </div>
-
         <div id="invoiceContainer"></div>
-
         <div style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px;">
             <strong>Add New Billing Section:</strong>
             <select id="categorySelector" style="padding:8px; margin:0 10px;">
@@ -114,9 +115,12 @@
             </select>
             <button class="btn btn-add" onclick="createSection()">+ Add to Invoice</button>
         </div>
-
         <div style="margin-top:40px; display:flex; justify-content:space-between; align-items:center; border-top: 2px solid #eee; padding-top:25px;">
-            <div style="display:flex; gap:12px;"><button class="btn btn-save" onclick="saveData(true)">Sync Progress</button><button class="btn btn-excel" onclick="exportToExcel()">Export Excel</button></div>
+            <div style="display:flex; gap:12px;">
+                <button class="btn btn-save" onclick="saveData(false)">Sync Progress</button>
+                <button class="btn btn-submit" onclick="saveData(true)">Submit for Review</button>
+                <button class="btn btn-excel" onclick="exportToExcel()">Export Excel</button>
+            </div>
             <div class="grand-total-box"><div>Hours: <span id="totalHours">0.00</span></div><div>Total: <span id="grandTotal">$0.00</span></div></div>
         </div>
     </div>
@@ -126,11 +130,9 @@
     const SUPABASE_URL = 'https://cfliviopdogrljkxzuaa.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
     let currentUserCode = ""; let isAdmin = false; let isNewUser = false;
     let currentInvoiceDate = new Date(2026, 3);
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
     window.onload = () => { document.getElementById('todayDate').innerText = new Date().toLocaleDateString(); };
 
     async function checkCodeType() {
@@ -169,7 +171,8 @@
     async function loadDashboard() {
         document.getElementById('masterDashboard').style.display = "block";
         document.getElementById('invoiceView').style.display = "none";
-        const { data } = await supabaseClient.from('invoices').select('*').order('updated_at', {ascending: false});
+        // ONLY PULL SUBMITTED INVOICES
+        const { data } = await supabaseClient.from('invoices').select('*').eq('submitted', true).order('updated_at', {ascending: false});
         const pList = document.getElementById('pendingList'); const aList = document.getElementById('paidList');
         pList.innerHTML = ""; aList.innerHTML = "";
         data.forEach(inv => {
@@ -211,10 +214,11 @@
         document.getElementById('totalHours').innerText = gH.toFixed(2); document.getElementById('grandTotal').innerText = `$${gP.toFixed(2)}`;
     }
 
-    async function saveData(alertMe) {
+    async function saveData(isFinal) {
         const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({id: sec.id.replace('sec-', ''), category: sec.querySelector('.section-bar span').innerText, rate: sec.querySelector('.rate').value, rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({date: row.cells[0].querySelector('input').value, desc: row.cells[1].querySelector('input').value, time: row.cells[2].querySelector('input').value })) }));
-        const payload = {month_year: `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`, user_code: currentUserCode, payee: document.getElementById('payeeName').value, firm: document.getElementById('firmName').value, address1: document.getElementById('address1').value, address2: document.getElementById('address2').value, address3: document.getElementById('address3').value, inv_num: document.getElementById('invNum').value, sections: sections };
-        await supabaseClient.from('invoices').upsert(payload); if (alertMe) alert("Cloud Sync Successful!");
+        const payload = {month_year: `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`, user_code: currentUserCode, payee: document.getElementById('payeeName').value, firm: document.getElementById('firmName').value, address1: document.getElementById('address1').value, address2: document.getElementById('address2').value, address3: document.getElementById('address3').value, inv_num: document.getElementById('invNum').value, sections: sections, submitted: isFinal, updated_at: new Date().toISOString() };
+        await supabaseClient.from('invoices').upsert(payload, { onConflict: 'month_year' });
+        alert(isFinal ? "Submitted for Finance Review!" : "Draft Saved to Cloud!");
     }
 
     async function loadData() {
@@ -225,10 +229,7 @@
             document.getElementById('address1').value = data.address1 || ""; document.getElementById('address2').value = data.address2 || "";
             document.getElementById('address3').value = data.address3 || ""; document.getElementById('invNum').value = data.inv_num || "";
             document.getElementById('invoiceContainer').innerHTML = ""; data.sections.forEach(s => createSection(s));
-        } else {
-            // New User or New Month: Clear container instead of adding a default section
-            document.getElementById('invoiceContainer').innerHTML = "";
-        }
+        } else { document.getElementById('invoiceContainer').innerHTML = ""; }
     }
 
     async function loadAdminView(id) {
