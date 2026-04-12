@@ -73,6 +73,20 @@
             text-align: left; 
         }
 
+        .new-user-toggle {
+            display: block;
+            margin-top: 15px;
+            color: #007bff;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .new-user-toggle:hover {
+            text-decoration: underline;
+        }
+
         /* --- DASHBOARD STYLES --- */
         #masterDashboard, #invoiceView { 
             display: none; 
@@ -277,8 +291,10 @@
 <div id="loginOverlay">
     <div class="login-box">
         <h2>Secure Legal Portal</h2>
-        <input type="password" id="accessCode" placeholder="Enter Access Code" oninput="checkUserStatus()">
+        <input type="password" id="accessCode" placeholder="Enter Access Key">
         
+        <span class="new-user-toggle" onclick="toggleNewUserFields()">New User</span>
+
         <div id="profileFields">
             <label style="font-size: 11px; font-weight: bold; color: #e67e22;">NEW USER SETUP</label>
             <input type="text" id="setupPayee" placeholder="Full Name (Payee)">
@@ -288,7 +304,7 @@
             <input type="text" id="setupAddress3" placeholder="City, State, Zip">
         </div>
         
-        <button class="btn btn-submit" style="width:100%; margin-top:15px;" onclick="handleLogin()">Login to System</button>
+        <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
     </div>
 </div>
 
@@ -377,7 +393,7 @@
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let currentUserCode = "";
-    let isNewUser = false;
+    let isRegistrationMode = false;
     let activeAdminInvoiceId = "";
     let currentInvoiceDate = new Date(2026, 3); 
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -386,16 +402,12 @@
         document.getElementById('todayDateDisplay').innerText = new Date().toLocaleDateString();
     };
 
-    /* --- AUTH & LOGOUT --- */
-    async function checkUserStatus() {
-        const code = document.getElementById('accessCode').value.trim().toUpperCase();
-        if (code === "FINANCE2026" || code.length < 3) {
-            document.getElementById('profileFields').style.display = "none";
-            return;
-        }
-        const { data } = await supabaseClient.from('invoices').select('user_code').eq('user_code', code).limit(1);
-        isNewUser = (!data || data.length === 0);
-        document.getElementById('profileFields').style.display = isNewUser ? "block" : "none";
+    /* --- AUTH UI LOGIC --- */
+    function toggleNewUserFields() {
+        isRegistrationMode = !isRegistrationMode;
+        document.getElementById('profileFields').style.display = isRegistrationMode ? "block" : "none";
+        const toggleBtn = document.querySelector('.new-user-toggle');
+        toggleBtn.innerText = isRegistrationMode ? "Cancel Registration" : "New User";
     }
 
     async function handleLogin() {
@@ -403,22 +415,42 @@
         if (!code) return;
 
         currentUserCode = code;
-        document.getElementById('loginOverlay').style.display = "none";
-        document.getElementById('topNav').style.display = "block";
-
+        
+        // Handle Finance Admin
         if (code.toUpperCase() === "FINANCE2026") {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('topNav').style.display = "block";
             loadFinanceView();
-        } else {
-            if (isNewUser) {
-                document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
-                document.getElementById('firmName').value = document.getElementById('setupFirm').value;
-                document.getElementById('address1').value = document.getElementById('setupAddress1').value;
-                document.getElementById('address2').value = document.getElementById('setupAddress2').value;
-                document.getElementById('address3').value = document.getElementById('setupAddress3').value;
-            }
+            return;
+        }
+
+        // Handle Registration Mode
+        if (isRegistrationMode) {
+            document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
+            document.getElementById('firmName').value = document.getElementById('setupFirm').value;
+            document.getElementById('address1').value = document.getElementById('setupAddress1').value;
+            document.getElementById('address2').value = document.getElementById('setupAddress2').value;
+            document.getElementById('address3').value = document.getElementById('setupAddress3').value;
+            
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('topNav').style.display = "block";
+            document.getElementById('invoiceView').style.display = "block";
+            renderMonthLabel();
+            calculateInvoices();
+            return;
+        }
+
+        // Standard Login: Check Database
+        const { data, error } = await supabaseClient.from('invoices').select('user_code').eq('user_code', code).limit(1);
+        
+        if (data && data.length > 0) {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('topNav').style.display = "block";
             document.getElementById('invoiceView').style.display = "block";
             renderMonthLabel();
             loadUserData();
+        } else {
+            alert("Access Key not found. If you are a new user, please click 'New User' below to set up your profile.");
         }
     }
 
@@ -457,7 +489,7 @@
 
     async function updateInvoiceStatus(id, newStatus) {
         await supabaseClient.from('invoices').update({ status: newStatus }).eq('month_year', id);
-        loadFinanceView(); // Silent refresh
+        loadFinanceView(); 
     }
 
     function navigateBackToDashboard() {
@@ -560,7 +592,6 @@
             const rate = parseFloat(section.querySelector('.rate-box').value) || 0;
             
             section.querySelectorAll('.item-row').forEach(row => {
-                // 1. DATE MISMATCH HIGHLIGHTING
                 const dInput = row.querySelector('.date-check');
                 if (dInput.value) {
                     const eD = new Date(dInput.value + 'T00:00:00');
@@ -571,7 +602,6 @@
                     }
                 }
 
-                // 2. PRECISION ROUNDING (0.05 logic)
                 const tInput = row.querySelector('.time-field');
                 let tNum = parseFloat(tInput.value) || 0;
                 if (tNum > 0) {
