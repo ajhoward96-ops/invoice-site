@@ -43,6 +43,51 @@
             gap: 15px;
         }
 
+        /* --- USER ASSISTANCE MODAL --- */
+        #assistanceModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            z-index: 2000;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #assistanceOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1999;
+        }
+
+        .assistance-search input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        .result-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .result-item:hover {
+            background: #f1f8ff;
+        }
+
         /* --- LOGIN SYSTEM --- */
         #loginOverlay { 
             position: fixed; 
@@ -256,7 +301,7 @@
             margin-left: 5px;
         }
 
-        /* --- BUTTONS --- */
+        /* --- BUTTON STYLES --- */
         .btn { padding: 12px 24px; cursor: pointer; font-weight: bold; border: none; border-radius: 4px; transition: 0.2s; }
         .btn-save { background: #6c757d; color: white; }
         .btn-submit { background: #007bff; color: white; }
@@ -265,7 +310,6 @@
         .btn-paid { background: #28a745; color: white; }
         .btn-resubmit { background: #2980b9; color: white; display: none; }
         
-        /* Master Bar Specifics */
         .btn-nav-blue { background: #3498db; color: white; padding: 8px 16px; font-size: 13px; }
         .btn-nav-grey { background: #7f8c8d; color: white; padding: 8px 16px; font-size: 13px; }
         .btn-nav-red { background: #e74c3c; color: white; padding: 8px 16px; font-size: 13px; }
@@ -285,12 +329,25 @@
 <div class="container">
     <div id="masterTopBar">
         <div class="nav-group">
-            <button class="btn btn-nav-blue" onclick="alert('User Assistance Mode: Activated')">User Assistance</button>
+            <button class="btn btn-nav-blue" onclick="openAssistance()">User Assistance</button>
         </div>
         <div class="nav-group">
-            <button class="btn btn-nav-grey" onclick="alert('Vault Housing Data Active')">Data Vault</button>
+            <button class="btn btn-nav-grey" onclick="alert('Data Vault section coming next...')">Data Vault</button>
             <button class="btn btn-nav-red" onclick="logoutSession()">Logout</button>
         </div>
+    </div>
+
+    <div id="assistanceOverlay" onclick="closeAssistance()"></div>
+    <div id="assistanceModal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">User Assistance</h2>
+            <button class="btn btn-nav-red" style="padding:4px 8px;" onclick="closeAssistance()">✕</button>
+        </div>
+        <div class="assistance-search">
+            <p style="font-size:13px; color:#666;">Search by Lawyer Name or Access Key to recover info.</p>
+            <input type="text" id="helpSearchInput" placeholder="Enter name or key..." oninput="searchUsersForHelp()">
+        </div>
+        <div id="helpResultsList"></div>
     </div>
 
     <div id="loginOverlay">
@@ -411,7 +468,7 @@
             
             <div id="adminActions" style="display:none; gap:12px;">
                 <button class="btn btn-kick" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Sent Back')">Kickback</button>
-                <button class="btn btn-ready" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve Review</button>
+                <button class="btn btn-ready" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve for Payment</button>
             </div>
 
             <div class="grand-total-box">
@@ -438,7 +495,56 @@
         document.getElementById('todayDateDisplay').innerText = new Date().toLocaleDateString();
     };
 
-    /* --- AUTHENTICATION --- */
+    /* --- USER ASSISTANCE --- */
+    function openAssistance() {
+        document.getElementById('assistanceOverlay').style.display = "block";
+        document.getElementById('assistanceModal').style.display = "block";
+    }
+
+    function closeAssistance() {
+        document.getElementById('assistanceOverlay').style.display = "none";
+        document.getElementById('assistanceModal').style.display = "none";
+        document.getElementById('helpSearchInput').value = "";
+        document.getElementById('helpResultsList').innerHTML = "";
+    }
+
+    async function searchUsersForHelp() {
+        const query = document.getElementById('helpSearchInput').value.trim();
+        if (query.length < 2) { document.getElementById('helpResultsList').innerHTML = ""; return; }
+
+        const { data, error } = await supabaseClient
+            .from('invoices')
+            .select('payee, user_code, firm, month_year')
+            .or(`payee.ilike.%${query}%,user_code.ilike.%${query}%`);
+
+        const resultsDiv = document.getElementById('helpResultsList');
+        resultsDiv.innerHTML = "";
+
+        if (data && data.length > 0) {
+            const uniqueLawyers = [...new Map(data.map(item => [item['user_code'], item])).values()];
+            
+            uniqueLawyers.forEach(lawyer => {
+                const item = document.createElement('div');
+                item.className = "result-item";
+                item.innerHTML = `
+                    <strong>${lawyer.payee}</strong><br>
+                    <span style="color:#007bff; font-weight:bold;">KEY: ${lawyer.user_code}</span><br>
+                    <small>${lawyer.firm || 'No firm listed'}</small>
+                `;
+                item.onclick = function() {
+                    if (confirm("Open invoice records for " + lawyer.payee + "?")) {
+                        closeAssistance();
+                        openInvoiceForReview(lawyer.month_year);
+                    }
+                };
+                resultsDiv.appendChild(item);
+            });
+        } else {
+            resultsDiv.innerHTML = "<p style='text-align:center; color:#999;'>No results found.</p>";
+        }
+    }
+
+    /* --- AUTH UI --- */
     function toggleNewUserFields() {
         isRegistrationMode = !isRegistrationMode;
         document.getElementById('profileFields').style.display = isRegistrationMode ? "block" : "none";
@@ -451,7 +557,6 @@
 
         currentUserCode = code;
 
-        // Finance Admin Login
         if (code.toUpperCase() === "FINANCE2026") {
             document.getElementById('loginOverlay').style.display = "none";
             document.getElementById('masterTopBar').style.display = "flex";
@@ -459,23 +564,11 @@
             return;
         }
 
-        // New Registration Mode
         if (isRegistrationMode) {
-            document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
-            document.getElementById('firmName').value = document.getElementById('setupFirm').value;
-            document.getElementById('address1').value = document.getElementById('setupAddress1').value;
-            document.getElementById('address2').value = document.getElementById('setupAddress2').value;
-            document.getElementById('address3').value = document.getElementById('setupAddress3').value;
-            
-            document.getElementById('loginOverlay').style.display = "none";
-            document.getElementById('masterTopBar').style.display = "flex";
-            document.getElementById('invoiceView').style.display = "block";
-            renderMonthLabel();
-            calculateInvoices();
+            setupNewProfile();
             return;
         }
 
-        // Standard Login
         const { data } = await supabaseClient.from('invoices').select('*').eq('user_code', code);
         
         if (data && data.length > 0) {
@@ -485,10 +578,10 @@
             
             const kicked = data.find(function(inv) { return inv.status === 'Sent Back'; });
             if (kicked) {
-                const monthName = kicked.month_year.split('_')[0];
-                const yearNum = kicked.month_year.split('_')[1];
-                alert("Notice: Your invoice for " + monthName + " " + yearNum + " has been sent back for corrections.");
-                currentInvoiceDate = new Date(parseInt(yearNum), months.indexOf(monthName));
+                const mInfo = kicked.month_year.split('_')[0];
+                const yInfo = kicked.month_year.split('_')[1];
+                alert("Notice: Your invoice for " + mInfo + " " + yInfo + " has been sent back for corrections.");
+                currentInvoiceDate = new Date(parseInt(yInfo), months.indexOf(mInfo));
             }
             
             renderMonthLabel();
@@ -498,11 +591,25 @@
         }
     }
 
+    function setupNewProfile() {
+        document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
+        document.getElementById('firmName').value = document.getElementById('setupFirm').value;
+        document.getElementById('address1').value = document.getElementById('setupAddress1').value;
+        document.getElementById('address2').value = document.getElementById('setupAddress2').value;
+        document.getElementById('address3').value = document.getElementById('setupAddress3').value;
+        
+        document.getElementById('loginOverlay').style.display = "none";
+        document.getElementById('masterTopBar').style.display = "flex";
+        document.getElementById('invoiceView').style.display = "block";
+        renderMonthLabel();
+        calculateInvoices();
+    }
+
     function logoutSession() {
         location.reload(); 
     }
 
-    /* --- DASHBOARD & MONTHS --- */
+    /* --- DASHBOARD NAVIGATION --- */
     function renderMonthLabel() { 
         const labelText = months[currentInvoiceDate.getMonth()] + " " + currentInvoiceDate.getFullYear();
         document.getElementById('currentMonthDisplay').innerText = labelText;
@@ -586,7 +693,7 @@
         loadFinanceView();
     }
 
-    /* --- INVOICE BUILDER --- */
+    /* --- INVOICE ENGINE --- */
     function createNewInvoiceSection(saved = null) {
         const id = saved ? saved.id : Date.now();
         const cat = saved ? saved.category : document.getElementById('categorySelector').value;
@@ -658,7 +765,7 @@
     }
 
     function deleteSection(id) {
-        if (confirm("Permanently remove this billing category?")) {
+        if (confirm("Delete section?")) {
             document.getElementById("sec-" + id).remove();
             calculateInvoices();
         }
@@ -707,7 +814,7 @@
         document.getElementById('grandTotalDisplay').innerText = "$" + globalVal.toFixed(2);
     }
 
-    /* --- DATABASE OPERATIONS --- */
+    /* --- DATA MANAGEMENT --- */
     async function syncInvoiceData(final) {
         const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(s) {
             return {
@@ -783,7 +890,6 @@
         const { error } = await supabaseClient.from('invoices').upsert(payload, { onConflict: 'month_year' });
         if (!error) {
             alert("Corrections Resubmitted!");
-            // RE-LOAD TO STAY LOGGED IN
             loadUserData();
         }
     }
