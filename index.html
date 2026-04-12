@@ -11,8 +11,8 @@
         
         /* Login Overlay */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .login-box input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .login-box input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 15px; }
         #profileFields { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; text-align: left; }
         #profileFields label { font-size: 11px; font-weight: bold; color: #e67e22; text-transform: uppercase; }
 
@@ -31,11 +31,10 @@
         
         .payee-info { margin-bottom: 25px; border: 1px solid #eee; padding: 25px; border-radius: 8px; background: #fafafa; }
         .header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-        .payee-info input { border: none; border-bottom: 1px solid #ddd; width: 100%; padding: 6px; margin: 4px 0; background: transparent; outline: none; transition: border-color 0.2s; }
-        .payee-info input:focus { border-bottom-color: #007bff; }
+        .payee-info input { border: none; border-bottom: 1px solid #ddd; width: 100%; padding: 6px; margin: 4px 0; background: transparent; outline: none; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-        th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; font-size: 11px; text-transform: uppercase; }
         td { border: 1px solid #dee2e6; padding: 0; }
         .item-row input { width: 100%; border: none; padding: 12px; box-sizing: border-box; font-size: 13px; background: transparent; }
         
@@ -45,7 +44,6 @@
         .total-row { background-color: #fff9c4; font-weight: bold; }
         .grand-total-box { border: 2px solid #2c3e50; padding: 15px 25px; font-size: 1.4em; font-weight: bold; background: #fff; border-radius: 8px; display: flex; gap: 40px; }
         
-        /* Buttons */
         .btn { padding: 12px 24px; cursor: pointer; font-weight: bold; border: none; border-radius: 4px; transition: 0.2s; }
         .btn-save { background: #27ae60; color: white; }
         .btn-add { background: #007bff; color: white; margin-top: 10px; }
@@ -69,6 +67,7 @@
             <input type="text" id="setupPayee" placeholder="Your Full Name (Payee)">
             <input type="text" id="setupFirm" placeholder="Attorney / Firm Name">
             <input type="text" id="setupAddress1" placeholder="Street Address">
+            <input type="text" id="setupAddress2" placeholder="Apt / Bldg / Suite #">
             <input type="text" id="setupAddress3" placeholder="City, State, Zip">
         </div>
         
@@ -100,9 +99,10 @@
         <div class="payee-info">
             <div class="header-grid">
                 <div>
-                    <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 26px; font-weight: bold;" spellcheck="true">
-                    <input type="text" id="firmName" placeholder="Attorney / Firm Name" spellcheck="true">
+                    <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 26px; font-weight: bold;">
+                    <input type="text" id="firmName" placeholder="Attorney / Firm Name">
                     <input type="text" id="address1" placeholder="Street Address">
+                    <input type="text" id="address2" placeholder="Apt / Bldg / Suite #">
                     <input type="text" id="address3" placeholder="City, State, Zip">
                 </div>
                 <div style="text-align: right;">
@@ -177,6 +177,7 @@
                 document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
                 document.getElementById('firmName').value = document.getElementById('setupFirm').value;
                 document.getElementById('address1').value = document.getElementById('setupAddress1').value;
+                document.getElementById('address2').value = document.getElementById('setupAddress2').value;
                 document.getElementById('address3').value = document.getElementById('setupAddress3').value;
             }
             document.getElementById('invoiceView').style.display = "block";
@@ -301,6 +302,7 @@
             payee: document.getElementById('payeeName').value,
             firm: document.getElementById('firmName').value,
             address1: document.getElementById('address1').value,
+            address2: document.getElementById('address2').value,
             address3: document.getElementById('address3').value,
             inv_num: document.getElementById('invNum').value,
             sections: sections
@@ -313,11 +315,12 @@
         const key = `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`;
         const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', key).single();
         if (data) {
-            document.getElementById('payeeName').value = data.payee;
-            document.getElementById('firmName').value = data.firm;
-            document.getElementById('address1').value = data.address1;
-            document.getElementById('address3').value = data.address3;
-            document.getElementById('invNum').value = data.inv_num;
+            document.getElementById('payeeName').value = data.payee || "";
+            document.getElementById('firmName').value = data.firm || "";
+            document.getElementById('address1').value = data.address1 || "";
+            document.getElementById('address2').value = data.address2 || "";
+            document.getElementById('address3').value = data.address3 || "";
+            document.getElementById('invNum').value = data.inv_num || "";
             document.getElementById('invoiceContainer').innerHTML = "";
             data.sections.forEach(s => createSection(s));
         } else { createSection(); }
@@ -333,6 +336,7 @@
             document.getElementById('payeeName').value = data.payee;
             document.getElementById('firmName').value = data.firm;
             document.getElementById('address1').value = data.address1;
+            document.getElementById('address2').value = data.address2;
             document.getElementById('address3').value = data.address3;
             document.getElementById('invNum').value = data.inv_num;
             data.sections.forEach(s => createSection(s));
@@ -341,7 +345,17 @@
     }
 
     function exportToExcel() {
-        let exportData = [[document.getElementById('payeeName').value], [document.getElementById('firmName').value], [document.getElementById('address1').value], [document.getElementById('address3').value], [], ["Invoice Date:", document.getElementById('todayDate').innerText], ["Invoice #:", document.getElementById('invNum').value], []];
+        let exportData = [
+            [document.getElementById('payeeName').value],
+            [document.getElementById('firmName').value],
+            [document.getElementById('address1').value],
+            [document.getElementById('address2').value],
+            [document.getElementById('address3').value],
+            [],
+            ["Invoice Date:", document.getElementById('todayDate').innerText],
+            ["Invoice #:", document.getElementById('invNum').value],
+            []
+        ];
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
             exportData.push([sec.querySelector('.section-bar span').innerText.toUpperCase(), "", "", "Rate:", `$${sec.querySelector('.rate').value}`]);
             exportData.push(["Date", "Description", "Time", "Amount"]);
