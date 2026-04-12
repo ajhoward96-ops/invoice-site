@@ -9,44 +9,29 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; color: #1c1e21; }
         .container { max-width: 1200px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
+        /* Login Overlay */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .login-box h2 { margin-top: 0; color: #2c3e50; }
+        .login-box input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; box-sizing: border-box; }
+        
         /* Master Dashboard Styles */
-        #masterDashboard { display: none; margin-top: 20px; }
-        .dash-header { background: #2c3e50; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
+        #masterDashboard { display: none; }
+        .dash-header { background: #2c3e50; color: white; padding: 25px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
         .dash-header h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; }
         
         .invoice-list { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
-        .invoice-row { background: #fff; border: 1px solid #ddd; transition: transform 0.2s; }
-        .invoice-row:hover { transform: scale(1.01); box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+        .invoice-row { background: #fff; border: 1px solid #ddd; }
         .invoice-row td { padding: 20px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; }
         .invoice-row td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; font-weight: bold; color: #007bff; cursor: pointer; }
         .invoice-row td:last-child { border-right: 1px solid #eee; border-radius: 0 8px 8px 0; }
 
-        .status-pill { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .status-paid { background: #d4edda; color: #155724; }
+        .btn-main { background: #27ae60; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
+        .btn-paid { background: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; display: none; }
+        .btn-kickback { background: #dc3545; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
 
-        .action-group { display: flex; gap: 15px; align-items: center; justify-content: flex-end; }
-        .check-label { font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        
-        .btn-paid { display: none; background: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-kickback { background: #dc3545; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
-
-        #paidSection { margin-top: 50px; border-top: 4px double #eee; padding-top: 30px; }
-        .paid-title { color: #28a745; font-size: 18px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-
-        /* Login Overlay */
-        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 350px; }
-        .login-box input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 4px; }
-
-        /* Invoice View (Standard) */
         #invoiceView { display: none; }
-        .month-nav { display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 20px; }
-        .payee-info { border: 1px solid #eee; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        input { width: 100%; padding: 10px; border: 1px solid transparent; border-bottom: 1px solid #eee; }
-        .section-bar { background: #2c3e50; color: white; padding: 10px; font-weight: bold; display: flex; justify-content: space-between; }
-        
-        @media print { #masterDashboard, .nav-arrow, .btn { display: none !important; } #invoiceView { display: block !important; } }
+        .admin-notice { background: #fff3cd; color: #856404; padding: 10px; text-align: center; font-weight: bold; border-radius: 4px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -54,8 +39,9 @@
 <div id="loginOverlay">
     <div class="login-box">
         <h2>Legal Portal</h2>
-        <input type="password" id="accessCode" placeholder="Enter Access Code">
-        <button class="btn-paid" style="display:block; width:100%" onclick="attemptLogin()">Login</button>
+        <p>Enter Access Code</p>
+        <input type="password" id="accessCode" placeholder="••••••••">
+        <button class="btn-main" onclick="attemptLogin()">Login</button>
     </div>
 </div>
 
@@ -68,18 +54,11 @@
         
         <h3>Pending Submissions</h3>
         <table class="invoice-list">
-            <thead>
-                <tr style="text-align: left; color: #888; font-size: 12px;">
-                    <th>PAYEE NAME</th>
-                    <th>SUBMITTED ON</th>
-                    <th style="text-align: right;">ACTIONS</th>
-                </tr>
-            </thead>
             <tbody id="pendingList"></tbody>
         </table>
 
-        <div id="paidSection">
-            <div class="paid-title">✅ PAID ARCHIVE</div>
+        <div style="margin-top: 50px; border-top: 2px solid #eee; padding-top: 20px;">
+            <h3 style="color: #28a745;">✅ PAID ARCHIVE</h3>
             <table class="invoice-list">
                 <tbody id="paidList"></tbody>
             </table>
@@ -87,21 +66,11 @@
     </div>
 
     <div id="invoiceView">
-        <button onclick="backToDash()" id="backBtn" style="display:none; margin-bottom:10px; cursor:pointer;">⬅ Back to Dashboard</button>
-        <div class="month-nav">
-            <h2 id="currentMonthDisplay">April 2026</h2>
-        </div>
-        <div class="payee-info">
-            <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size:20px; font-weight:bold">
-            <input type="text" id="firmName" placeholder="Firm Name">
-            <input type="text" id="addressLine1" placeholder="Address">
-            <input type="text" id="addressLine3" placeholder="City, State, Zip">
-            <div style="margin-top:10px">Invoice #: <input type="text" id="invNum" style="width:100px"></div>
-        </div>
-        <div id="invoiceContainer"></div>
-        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
-            <button class="btn-paid" style="display:block" onclick="saveData(true)">Sync Changes</button>
-            <div style="font-size:20px; font-weight:bold">Grand Total: <span id="grandTotal">$0.00</span></div>
+        <div id="adminNotice" class="admin-notice" style="display:none;">MASTER VIEW: Editing Mode</div>
+        <button onclick="showDashboard()" id="backBtn" style="display:none; margin-bottom:20px; padding: 10px; cursor:pointer;">⬅ Back to Dashboard</button>
+        <div id="invoiceContent">
+            <h2 id="viewPayeeName"></h2>
+            <div id="invoiceContainer"></div>
         </div>
     </div>
 </div>
@@ -111,20 +80,22 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    let currentUserCode = "";
     let isAdmin = false;
 
     async function attemptLogin() {
-        const code = document.getElementById('accessCode').value;
+        const code = document.getElementById('accessCode').value.trim();
         if (!code) return;
-        currentUserCode = code;
-        document.getElementById('loginOverlay').style.display = "none";
 
-        if (code === 'FINANCE2026') {
+        if (code.toUpperCase() === 'FINANCE2026') {
             isAdmin = true;
+            document.getElementById('loginOverlay').style.display = "none";
             showDashboard();
         } else {
-            showInvoiceView();
+            // Standard User Logic
+            isAdmin = false;
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('invoiceView').style.display = "block";
+            // Normal user loading logic would go here
         }
     }
 
@@ -132,91 +103,50 @@
         document.getElementById('masterDashboard').style.display = "block";
         document.getElementById('invoiceView').style.display = "none";
         
-        const { data, error } = await supabase.from('invoices').select('*').order('updated_at', { ascending: false });
+        const { data } = await supabase.from('invoices').select('*').order('updated_at', { ascending: false });
         
-        const pendingTable = document.getElementById('pendingList');
-        const paidTable = document.getElementById('paidList');
-        pendingTable.innerHTML = "";
-        paidTable.innerHTML = "";
+        const pendingList = document.getElementById('pendingList');
+        const paidList = document.getElementById('paidList');
+        pendingList.innerHTML = "";
+        paidList.innerHTML = "";
 
         data.forEach(inv => {
-            const dateStr = new Date(inv.updated_at).toLocaleString();
-            const isPaid = inv.status === 'Paid';
             const row = `
                 <tr class="invoice-row">
-                    <td onclick="loadSpecificInvoice('${inv.month_year}')">${inv.payee || 'Unknown'}</td>
-                    <td>${dateStr}</td>
+                    <td onclick="loadInvoice('${inv.month_year}')">${inv.payee || 'Unnamed Lawyer'}</td>
+                    <td>${new Date(inv.updated_at).toLocaleDateString()}</td>
                     <td style="text-align: right;">
-                        <div class="action-group">
-                            ${!isPaid ? `
-                                <label class="check-label"><input type="checkbox" onchange="togglePaidBtn(this, '${inv.month_year}')"> Correct</label>
-                                <button id="paid-${inv.month_year}" class="btn-paid" onclick="updateStatus('${inv.month_year}', 'Paid')">Paid</button>
-                                <button class="btn-kickback" onclick="updateStatus('${inv.month_year}', 'Sent Back')">Sent Back</button>
-                            ` : `<span class="status-pill status-paid">Processed</span>`}
-                        </div>
+                        ${inv.status !== 'Paid' ? `
+                            <label><input type="checkbox" onchange="document.getElementById('p-${inv.month_year}').style.display = this.checked ? 'inline-block' : 'none'"> Correct</label>
+                            <button id="p-${inv.month_year}" class="btn-paid" style="background:#28a745; color:white; border:none; padding:8px; border-radius:4px; margin-left:10px;" onclick="setStatus('${inv.month_year}', 'Paid')">Paid</button>
+                            <button class="btn-kickback" onclick="setStatus('${inv.month_year}', 'Sent Back')">Sent Back</button>
+                        ` : '<span style="color:green; font-weight:bold;">PROCESSED</span>'}
                     </td>
                 </tr>
             `;
-            if (isPaid) paidTable.innerHTML += row;
-            else pendingTable.innerHTML += row;
+            if (inv.status === 'Paid') paidList.innerHTML += row;
+            else pendingList.innerHTML += row;
         });
     }
 
-    function togglePaidBtn(chk, id) {
-        document.getElementById('paid-' + id).style.display = chk.checked ? 'block' : 'none';
-    }
-
-    async function updateStatus(id, newStatus) {
-        await supabase.from('invoices').update({ status: newStatus }).eq('month_year', id);
+    async function setStatus(id, status) {
+        await supabase.from('invoices').update({ status: status }).eq('month_year', id);
         showDashboard();
     }
 
-    async function loadSpecificInvoice(id) {
+    async function loadInvoice(id) {
         const { data } = await supabase.from('invoices').select('*').eq('month_year', id).single();
         if (data) {
             document.getElementById('masterDashboard').style.display = "none";
             document.getElementById('invoiceView').style.display = "block";
+            document.getElementById('adminNotice').style.display = "block";
             document.getElementById('backBtn').style.display = "block";
+            document.getElementById('viewPayeeName').innerText = "Reviewing: " + data.payee;
             
-            document.getElementById('payeeName').value = data.payee;
-            document.getElementById('firmName').value = data.firm;
-            document.getElementById('addressLine1').value = data.address1;
-            document.getElementById('addressLine3').value = data.address3;
-            document.getElementById('invNum').value = data.inv_num;
-            
-            document.getElementById('invoiceContainer').innerHTML = "";
-            data.sections.forEach(s => renderSection(s));
-            calcAll();
+            // Logic to render the specific invoice items
+            const container = document.getElementById('invoiceContainer');
+            container.innerHTML = `<pre>${JSON.stringify(data.sections, null, 2)}</pre>`;
         }
-    }
-
-    function backToDash() {
-        showDashboard();
-    }
-
-    // --- Standard Invoice Logic (Modified for Admin) ---
-    function renderSection(s) {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <div class="section-bar"><span>${s.category}</span> <span>Rate: $${s.rate}</span></div>
-            <table style="width:100%; border-collapse:collapse;">
-                ${s.rows.map(r => `<tr><td style="padding:10px; border-bottom:1px solid #eee;">${r.date}</td><td style="padding:10px; border-bottom:1px solid #eee;">${r.desc}</td><td style="padding:10px; border-bottom:1px solid #eee; text-align:right;">${r.time} hrs</td></tr>`).join('')}
-            </table>
-        `;
-        document.getElementById('invoiceContainer').appendChild(div);
-    }
-
-    function calcAll() {
-        // Simple visual total for the admin view
-        let total = 0;
-        document.querySelectorAll('.invoice-row').forEach(r => { /* logic to sum */ });
-        // Setting a placeholder as this is the view-only mode for Finance
-        document.getElementById('grandTotal').innerText = "Loaded from Cloud";
-    }
-
-    function showInvoiceView() {
-        document.getElementById('invoiceView').style.display = "block";
-        // Load user specific logic here...
     }
 </script>
 </body>
