@@ -27,13 +27,20 @@
             position: relative;
         }
 
-        /* --- NAVIGATION --- */
-        #topNav {
-            position: absolute;
-            top: 20px;
-            right: 30px;
+        /* --- MASTER TOP NAVIGATION BAR --- */
+        #masterTopBar {
             display: none;
-            z-index: 10;
+            background: #2c3e50;
+            margin: -30px -30px 30px -30px;
+            padding: 10px 30px;
+            border-radius: 12px 12px 0 0;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-group {
+            display: flex;
+            gap: 15px;
         }
 
         /* --- LOGIN SYSTEM --- */
@@ -90,8 +97,9 @@
         }
 
         .dash-header { 
-            background: #2c3e50; 
-            color: white; 
+            background: #f8f9fa; 
+            border: 1px solid #dee2e6;
+            color: #2c3e50; 
             padding: 25px; 
             border-radius: 8px; 
             text-align: center; 
@@ -114,6 +122,11 @@
             text-transform: uppercase;
         }
 
+        /* Centering the Status Column Header */
+        .invoice-list th:last-child {
+            text-align: center;
+        }
+
         .invoice-row td { 
             padding: 15px 12px; 
             border-bottom: 1px solid #eee; 
@@ -124,6 +137,11 @@
             font-weight: bold; 
             color: #007bff; 
             cursor: pointer; 
+        }
+
+        /* Centering the Status Text in Rows */
+        .status-cell {
+            text-align: center;
         }
 
         /* --- INVOICE HEADER --- */
@@ -172,7 +190,6 @@
             border: 1px solid #ccc; 
             border-radius: 4px; 
             background: #fff; 
-            transition: background 0.2s;
         }
 
         /* --- GRID & TABLE STYLES --- */
@@ -242,68 +259,62 @@
         }
 
         /* --- BUTTONS --- */
-        .btn { 
-            padding: 12px 24px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            border: none; 
-            border-radius: 4px; 
-            transition: background 0.2s;
-        }
-
+        .btn { padding: 12px 24px; cursor: pointer; font-weight: bold; border: none; border-radius: 4px; transition: 0.2s; }
         .btn-save { background: #6c757d; color: white; }
         .btn-submit { background: #007bff; color: white; }
         .btn-kick { background: #dc3545; color: white; }
         .btn-ready { background: #f39c12; color: white; }
         .btn-paid { background: #28a745; color: white; }
-        .btn-logout { background: #e74c3c; color: white; padding: 8px 16px; font-size: 14px; }
+        
+        /* Navigation Bar Specific Buttons */
+        .btn-nav-blue { background: #3498db; color: white; padding: 8px 16px; font-size: 13px; }
+        .btn-nav-grey { background: #7f8c8d; color: white; padding: 8px 16px; font-size: 13px; }
+        .btn-nav-red { background: #e74c3c; color: white; padding: 8px 16px; font-size: 13px; }
 
         .grand-total-box { 
-            border: 2px solid #2c3e50; 
-            padding: 15px 25px; 
-            font-size: 1.4em; 
-            font-weight: bold; 
-            background: #fff; 
-            border-radius: 8px; 
-            display: flex; 
-            gap: 40px; 
+            border: 2px solid #2c3e50; padding: 15px 25px; font-size: 1.4em; font-weight: bold; 
+            background: #fff; border-radius: 8px; display: flex; gap: 40px; 
         }
 
         .minimize-btn { cursor: pointer; margin-right: 15px; font-size: 18px; user-select: none; }
 
-        @media print { .btn, #loginOverlay, #profileFields, #sectionAdder, .minimize-btn, .nav-arrow, #topNav { display: none !important; } }
+        @media print { .btn, #loginOverlay, #profileFields, #sectionAdder, .minimize-btn, .nav-arrow, #masterTopBar { display: none !important; } }
     </style>
 </head>
 <body>
 
-<div id="topNav">
-    <button class="btn btn-logout" onclick="logoutSession()">Logout</button>
-</div>
-
-<div id="loginOverlay">
-    <div class="login-box">
-        <h2>Secure Legal Portal</h2>
-        <input type="password" id="accessCode" placeholder="Enter Access Key">
-        <span class="new-user-toggle" onclick="toggleNewUserFields()">New User</span>
-        
-        <div id="profileFields">
-            <label style="font-size: 11px; font-weight: bold; color: #e67e22;">NEW USER SETUP</label>
-            <input type="text" id="setupPayee" placeholder="Full Name (Payee)">
-            <input type="text" id="setupFirm" placeholder="Attorney / Firm Name">
-            <input type="text" id="setupAddress1" placeholder="Street Address">
-            <input type="text" id="setupAddress2" placeholder="Apt / Suite #">
-            <input type="text" id="setupAddress3" placeholder="City, State, Zip">
-        </div>
-        
-        <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
-    </div>
-</div>
-
 <div class="container">
+    <div id="masterTopBar">
+        <div class="nav-group">
+            <button class="btn btn-nav-blue" onclick="alert('Login Recovery System coming next...')">User Assistance</button>
+        </div>
+        <div class="nav-group">
+            <button class="btn btn-nav-grey" onclick="alert('Data Vault section next...')">Data Vault</button>
+            <button class="btn btn-nav-red" onclick="location.reload()">Logout</button>
+        </div>
+    </div>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2>Secure Legal Portal</h2>
+            <input type="password" id="accessCode" placeholder="Enter Access Key">
+            <span class="new-user-toggle" onclick="toggleNewUserFields()">New User</span>
+            <div id="profileFields">
+                <label style="font-size: 11px; font-weight: bold; color: #e67e22;">NEW USER SETUP</label>
+                <input type="text" id="setupPayee" placeholder="Full Name (Payee)">
+                <input type="text" id="setupFirm" placeholder="Attorney / Firm Name">
+                <input type="text" id="setupAddress1" placeholder="Street Address">
+                <input type="text" id="setupAddress2" placeholder="Apt / Suite #">
+                <input type="text" id="setupAddress3" placeholder="City, State, Zip">
+            </div>
+            <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
+        </div>
+    </div>
+
     <div id="masterDashboard">
         <div class="dash-header">
             <h1>Finance Master Dashboard</h1>
-            <p>Managing global invoices and processing payments</p>
+            <p>Processing submissions and verifying global payments</p>
         </div>
 
         <div class="month-nav">
@@ -325,7 +336,7 @@
             <tbody id="pendingList"></tbody>
         </table>
         
-        <h3 style="color:#f39c12; margin-top: 40px;">2. Ready for Payment</h3>
+        <h3 style="color:#f39c12; margin-top: 40px;">2. Ready for Payment (Reviewed)</h3>
         <table class="invoice-list">
             <thead>
                 <tr>
@@ -366,9 +377,7 @@
                 <div>
                     <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 26px; font-weight: bold;">
                     <input type="text" id="firmName" placeholder="Attorney / Firm Name">
-                    <input type="text" id="address1" placeholder="Street Address">
-                    <input type="text" id="address2" placeholder="Apt / Suite #">
-                    <input type="text" id="address3" placeholder="City, State, Zip">
+                    <input type="text" id="address1" placeholder="Street Address"><input type="text" id="address2" placeholder="Apt / Suite #"><input type="text" id="address3" placeholder="City, State, Zip">
                 </div>
                 <div style="text-align: right;">
                     <div>Date: <span id="todayDateDisplay"></span></div>
@@ -429,7 +438,7 @@
         document.getElementById('todayDateDisplay').innerText = new Date().toLocaleDateString();
     };
 
-    /* --- AUTH & UI TOGGLES --- */
+    /* --- AUTH UI LOGIC --- */
     function toggleNewUserFields() {
         isRegistrationMode = !isRegistrationMode;
         document.getElementById('profileFields').style.display = isRegistrationMode ? "block" : "none";
@@ -441,12 +450,15 @@
         if (!code) return;
 
         currentUserCode = code;
-        document.getElementById('topNav').style.display = "block";
 
         if (code.toUpperCase() === "FINANCE2026") {
             document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
             loadFinanceView();
-        } else if (isRegistrationMode) {
+            return;
+        }
+
+        if (isRegistrationMode) {
             document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
             document.getElementById('firmName').value = document.getElementById('setupFirm').value;
             document.getElementById('address1').value = document.getElementById('setupAddress1').value;
@@ -454,24 +466,24 @@
             document.getElementById('address3').value = document.getElementById('setupAddress3').value;
             
             document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
             document.getElementById('invoiceView').style.display = "block";
             renderMonthLabel();
             calculateInvoices();
-        } else {
-            const { data } = await supabaseClient.from('invoices').select('user_code').eq('user_code', code).limit(1);
-            if (data && data.length > 0) {
-                document.getElementById('loginOverlay').style.display = "none";
-                document.getElementById('invoiceView').style.display = "block";
-                renderMonthLabel();
-                loadUserData();
-            } else {
-                alert("Access Key not found.");
-            }
+            return;
         }
-    }
 
-    function logoutSession() {
-        location.reload(); 
+        const { data } = await supabaseClient.from('invoices').select('user_code').eq('user_code', code).limit(1);
+        
+        if (data && data.length > 0) {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
+            document.getElementById('invoiceView').style.display = "block";
+            renderMonthLabel();
+            loadUserData();
+        } else {
+            alert("Access Key not found. Please click 'New User' to register.");
+        }
     }
 
     /* --- DASHBOARD LOGIC (STAY LOGGED IN) --- */
@@ -482,7 +494,6 @@
     }
 
     async function changeActiveMonth(delta) {
-        // Sync progress if in lawyer view
         if (document.getElementById('invoiceView').style.display === "block" && !activeAdminInvoiceId) {
             await syncInvoiceData(false);
         }
@@ -504,7 +515,6 @@
 
         const storageKeyPrefix = `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}`;
 
-        // Fetching specifically for the selected month prefix
         const { data } = await supabaseClient
             .from('invoices')
             .select('*')
@@ -519,7 +529,6 @@
         pList.innerHTML = ""; rList.innerHTML = ""; aList.innerHTML = "";
 
         data.forEach(inv => {
-            // Calculating the exact amount due from the submission JSON
             let totalDue = 0;
             if (inv.sections) {
                 inv.sections.forEach(sec => {
@@ -537,7 +546,7 @@
                     <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
                     <td>${new Date(inv.updated_at).toLocaleDateString()}</td>
                     <td>$${totalDue.toFixed(2)}</td>
-                    <td style="text-align:right">
+                    <td class="status-cell">
                         ${inv.status === 'Ready for Payment' ? 
                             `<button class="btn btn-paid" onclick="updateInvoiceStatus('${inv.month_year}', 'Paid')">Confirm Paid</button>` : 
                             inv.status}
@@ -552,7 +561,7 @@
 
     async function updateInvoiceStatus(id, newStatus) {
         await supabaseClient.from('invoices').update({ status: newStatus }).eq('month_year', id);
-        loadFinanceView(); // Silent dashboard refresh
+        loadFinanceView(); 
     }
 
     function navigateBackToDashboard() {
@@ -644,7 +653,6 @@
             const rate = parseFloat(section.querySelector('.rate-box').value) || 0;
             
             section.querySelectorAll('.item-row').forEach(row => {
-                // 1. DATE MISMATCH HIGHLIGHTING
                 const dInput = row.querySelector('.date-check');
                 if (dInput.value) {
                     const eD = new Date(dInput.value + 'T00:00:00');
@@ -655,7 +663,6 @@
                     }
                 }
 
-                // 2. PRECISION ROUNDING (0.05 logic)
                 const tInput = row.querySelector('.time-field');
                 let tNum = parseFloat(tInput.value) || 0;
                 if (tNum > 0) {
@@ -740,7 +747,6 @@
         document.getElementById('adminActions').style.display = "flex";
         document.getElementById('sectionAdder').style.display = "none";
         
-        // Hide lawyer monthly nav during review to prevent logic conflicts
         document.getElementById('userPrev').style.display = "none";
         document.getElementById('userNext').style.display = "none";
 
