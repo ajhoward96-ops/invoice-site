@@ -8,28 +8,52 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; color: #1c1e21; }
         .container { max-width: 1200px; margin: 40px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        
+        /* Login Overlay */
         #loginOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .login-box { background: white; padding: 40px; border-radius: 8px; text-align: center; width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .login-box input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 15px; }
         #profileFields { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; text-align: left; }
+        
+        /* Dashboard */
         #masterDashboard { display: none; }
         .dash-header { background: #2c3e50; color: white; padding: 25px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
         .invoice-list { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
         .invoice-row td { padding: 20px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; background: #fff; }
         .invoice-row td:first-child { border-left: 1px solid #eee; border-radius: 8px 0 0 8px; font-weight: bold; color: #007bff; cursor: pointer; }
+
+        /* Invoice Engine */
         #invoiceView { display: none; }
         .month-nav { display: flex; align-items: center; justify-content: center; gap: 30px; margin-bottom: 25px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
         .nav-arrow { font-size: 24px; cursor: pointer; user-select: none; padding: 5px 15px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+        
         .payee-info { margin-bottom: 25px; border: 1px solid #eee; padding: 25px; border-radius: 8px; background: #fafafa; }
         .header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
         .payee-info input { border: none; border-bottom: 1px solid #ddd; width: 100%; padding: 6px; margin: 4px 0; background: transparent; outline: none; }
+
+        /* Table Styling */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
         th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; font-size: 11px; text-transform: uppercase; }
         td { border: 1px solid #dee2e6; padding: 0; }
         .item-row input { width: 100%; border: none; padding: 12px; box-sizing: border-box; font-size: 13px; background: transparent; }
+        
+        /* FIX: Rate Visibility */
         .section-bar { display: flex; justify-content: space-between; align-items: center; background: #2c3e50; color: #fff; padding: 12px 15px; font-weight: bold; border-radius: 4px 4px 0 0; }
+        .rate-input { 
+            background: #fff !important; 
+            color: #2c3e50 !important; 
+            border: 1px solid #ccc !important; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            width: 70px; 
+            font-weight: bold; 
+            margin-left: 5px;
+        }
+
         .total-row { background-color: #fff9c4; font-weight: bold; }
         .grand-total-box { border: 2px solid #2c3e50; padding: 15px 25px; font-size: 1.4em; font-weight: bold; background: #fff; border-radius: 8px; display: flex; gap: 40px; }
+        
+        /* Buttons */
         .btn { padding: 12px 24px; cursor: pointer; font-weight: bold; border: none; border-radius: 4px; transition: 0.2s; }
         .btn-save { background: #6c757d; color: white; }
         .btn-submit { background: #27ae60; color: white; }
@@ -38,10 +62,12 @@
         .btn-add { background: #007bff; color: white; margin-top: 10px; }
         .btn-excel { background: #1f6e43; color: white; }
         .btn-del { color: #ff4d4d; cursor: pointer; font-weight: bold; padding: 10px; text-align: center; }
+
         @media print { #masterDashboard, .btn, .nav-arrow, .login-box, .btn-del, #profileFields { display: none !important; } #invoiceView { display: block !important; } }
     </style>
 </head>
 <body>
+
 <div id="loginOverlay">
     <div class="login-box">
         <h2>Secure Legal Portal</h2>
@@ -56,12 +82,14 @@
         <button class="btn btn-submit" style="width:100%; margin-top:15px;" onclick="attemptLogin()">Login</button>
     </div>
 </div>
+
 <div class="container">
     <div id="masterDashboard">
         <div class="dash-header"><h1>Master Access Dashboard</h1><p>Viewing and editing all cloud logs</p></div>
         <h3>Pending Submissions</h3><table class="invoice-list"><tbody id="pendingList"></tbody></table>
         <h3 style="margin-top:50px; color: #27ae60;">✅ Paid Archive</h3><table class="invoice-list"><tbody id="paidList"></tbody></table>
     </div>
+
     <div id="invoiceView">
         <button onclick="location.reload()" id="backBtn" style="display:none; margin-bottom:20px;">⬅ Back to Dashboard</button>
         <div class="month-nav"><span class="nav-arrow" onclick="changeMonth(-1)">&#10094;</span><h2 id="currentMonthDisplay">April 2026</h2><span class="nav-arrow" onclick="changeMonth(1)">&#10095;</span></div>
@@ -98,6 +126,7 @@
         </div>
     </div>
 </div>
+
 <script>
     const SUPABASE_URL = 'https://cfliviopdogrljkxzuaa.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
@@ -150,7 +179,7 @@
         const id = saved ? saved.id : Date.now();
         const cat = saved ? saved.category : document.getElementById('categorySelector').value;
         const sec = document.createElement('div'); sec.id = `sec-${id}`; sec.style.marginBottom = "40px";
-        sec.innerHTML = `<div class="section-bar"><span>${cat}</span><div style="display:flex; align-items:center;">Rate: $<input type="number" class="rate" value="${saved?.rate || 0}" style="width:55px; color:white;" oninput="calcAll()"><button style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:11px; margin-left:10px;" onclick="if(confirm('Delete section?')) {this.parentElement.parentElement.parentElement.remove(); calcAll();}">Delete</button></div></div><table><tbody id="body-${id}"></tbody><tr class="total-row"><td colspan="2" style="text-align:right; padding:12px;">Subtotal</td><td id="t-${id}" style="text-align:center; width:100px;">0.00</td><td id="p-${id}" style="text-align:right; padding-right:15px; width:130px;">$0.00</td></tr></table><button class="btn btn-add" style="font-size:12px; background:#6c757d;" onclick="addRow('${id}')">+ Add Line Item</button>`;
+        sec.innerHTML = `<div class="section-bar"><span>${cat}</span><div style="display:flex; align-items:center;">Rate: $<input type="number" class="rate-input" value="${saved?.rate || 0}" oninput="calcAll()"><button style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:11px; margin-left:15px;" onclick="if(confirm('Delete section?')) {this.parentElement.parentElement.parentElement.remove(); calcAll();}">Delete</button></div></div><table><tbody id="body-${id}"></tbody><tr class="total-row"><td colspan="2" style="text-align:right; padding:12px;">Subtotal</td><td id="t-${id}" style="text-align:center; width:100px;">0.00</td><td id="p-${id}" style="text-align:right; padding-right:15px; width:130px;">$0.00</td></tr></table><button class="btn btn-add" style="font-size:12px; background:#6c757d;" onclick="addRow('${id}')">+ Add Line Item</button>`;
         document.getElementById('invoiceContainer').appendChild(sec);
         if (saved) saved.rows.forEach(r => addRow(id, r)); else addRow(id);
     }
@@ -164,7 +193,7 @@
     function calcAll() {
         let gH = 0, gP = 0;
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
-            let sH = 0, sP = 0; const rate = parseFloat(sec.querySelector('.rate').value) || 0;
+            let sH = 0, sP = 0; const rate = parseFloat(sec.querySelector('.rate-input').value) || 0;
             sec.querySelectorAll('.item-row').forEach(row => {
                 const t = parseFloat(row.querySelector('.time').value) || 0; const total = t * rate;
                 row.querySelector('.r-total').innerText = `$${total.toFixed(2)}`; sH += t; sP += total;
@@ -176,7 +205,7 @@
     }
 
     async function saveData(isFinal) {
-        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({id: sec.id.replace('sec-', ''), category: sec.querySelector('.section-bar span').innerText, rate: sec.querySelector('.rate').value, rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({date: row.cells[0].querySelector('input').value, desc: row.cells[1].querySelector('input').value, time: row.cells[2].querySelector('input').value })) }));
+        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(sec => ({id: sec.id.replace('sec-', ''), category: sec.querySelector('.section-bar span').innerText, rate: sec.querySelector('.rate-input').value, rows: Array.from(sec.querySelectorAll('.item-row')).map(row => ({date: row.cells[0].querySelector('input').value, desc: row.cells[1].querySelector('input').value, time: row.cells[2].querySelector('input').value })) }));
         const payload = {month_year: `${months[currentInvoiceDate.getMonth()]}_${currentInvoiceDate.getFullYear()}_${currentUserCode}`, user_code: currentUserCode, payee: document.getElementById('payeeName').value, firm: document.getElementById('firmName').value, address1: document.getElementById('address1').value, address2: document.getElementById('address2').value, address3: document.getElementById('address3').value, inv_num: document.getElementById('invNum').value, sections: sections, submitted: isFinal, updated_at: new Date().toISOString() };
         await supabaseClient.from('invoices').upsert(payload, { onConflict: 'month_year' }); alert(isFinal ? "Submitted!" : "Draft Saved!");
     }
@@ -209,7 +238,7 @@
     function exportToExcel() {
         let exportData = [[document.getElementById('payeeName').value], [document.getElementById('firmName').value], [document.getElementById('address1').value], [document.getElementById('address2').value], [document.getElementById('address3').value], [], ["Date:", new Date().toLocaleDateString()], ["Invoice #:", document.getElementById('invNum').value], []];
         document.querySelectorAll('[id^="sec-"]').forEach(sec => {
-            exportData.push([sec.querySelector('.section-bar span').innerText.toUpperCase(), "", "", "Rate:", `$${sec.querySelector('.rate').value}`]);
+            exportData.push([sec.querySelector('.section-bar span').innerText.toUpperCase(), "", "", "Rate:", `$${sec.querySelector('.rate-input').value}`]);
             exportData.push(["Date", "Description", "Time", "Amount"]);
             sec.querySelectorAll('.item-row').forEach(row => { const cells = row.querySelectorAll('input'); exportData.push([cells[0].value, cells[1].value, cells[2].value, row.querySelector('.r-total').innerText]); });
             exportData.push(["", "SUBTOTAL", sec.querySelector(`[id^="t-"]`).innerText, sec.querySelector(`[id^="p-"]`).innerText], []);
