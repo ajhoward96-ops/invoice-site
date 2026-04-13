@@ -136,6 +136,63 @@
             font-size: 14px;
         }
 
+        /* --- FORGOT KEY --- */
+        #forgotKeyFields {
+            display: none;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            text-align: left;
+        }
+
+        #forgotKeyFields label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #8e44ad;
+        }
+
+        #keyResult {
+            display: none;
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #keyResult.found {
+            background: #eaf7ee;
+            border: 1px solid #27ae60;
+            color: #1a6b3a;
+        }
+
+        #keyResult.not-found {
+            background: #fdecea;
+            border: 1px solid #e74c3c;
+            color: #922b21;
+        }
+
+        #keyResult .revealed-key {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin: 8px 0 4px;
+            color: #2c3e50;
+        }
+
+        .btn-use-key {
+            margin-top: 10px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+        }
+
         /* --- DASHBOARD STYLES --- */
         #masterDashboard, #invoiceView { 
             display: none; 
@@ -756,6 +813,18 @@
                 <input type="text" id="setupAddress2" placeholder="Apt / Suite #">
                 <input type="text" id="setupAddress3" placeholder="City, State, Zip">
             </div>
+            <span class="new-user-toggle" style="color:#8e44ad;" onclick="toggleForgotKey()">Forgot My Key</span>
+            <div id="forgotKeyFields">
+                <label>KEY RECOVERY</label>
+                <input type="text" id="recoverPayee" placeholder="Full Name (as registered)" style="margin-top:8px;">
+                <input type="text" id="recoverZip" placeholder="Zip Code (as registered)" style="margin-top:6px;">
+                <button class="btn" style="width:100%; margin-top:12px; background:#8e44ad; color:white;" onclick="lookupKey()">Find My Key</button>
+                <div id="keyResult">
+                    <div id="keyResultMsg"></div>
+                    <div class="revealed-key" id="revealedKey"></div>
+                    <button class="btn-use-key" id="btnUseKey" onclick="useRecoveredKey()" style="display:none;">Use This Key to Login →</button>
+                </div>
+            </div>
             <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
         </div>
     </div>
@@ -970,15 +1039,105 @@
     };
 
     /* --- AUTHENTICATION --- */
+    let isForgotKeyMode = false;
+    let recoveredKey = "";
+
     function toggleNewUserFields() {
         isRegistrationMode = !isRegistrationMode;
         if (isRegistrationMode) {
+            // Close forgot key if open
+            isForgotKeyMode = false;
+            document.getElementById('forgotKeyFields').style.display = "none";
             document.getElementById('profileFields').style.display = "block";
-            document.querySelector('.new-user-toggle').innerText = "Cancel Registration";
+            document.querySelectorAll('.new-user-toggle')[0].innerText = "Cancel Registration";
         } else {
             document.getElementById('profileFields').style.display = "none";
-            document.querySelector('.new-user-toggle').innerText = "New User";
+            document.querySelectorAll('.new-user-toggle')[0].innerText = "New User";
         }
+    }
+
+    function toggleForgotKey() {
+        isForgotKeyMode = !isForgotKeyMode;
+        const forgotDiv = document.getElementById('forgotKeyFields');
+        const forgotLink = document.querySelectorAll('.new-user-toggle')[1];
+        if (isForgotKeyMode) {
+            // Close new user if open
+            isRegistrationMode = false;
+            document.getElementById('profileFields').style.display = "none";
+            document.querySelectorAll('.new-user-toggle')[0].innerText = "New User";
+            forgotDiv.style.display = "block";
+            forgotLink.innerText = "Cancel Recovery";
+            // Reset result area
+            document.getElementById('keyResult').style.display = "none";
+            document.getElementById('recoverPayee').value = "";
+            document.getElementById('recoverZip').value = "";
+            recoveredKey = "";
+        } else {
+            forgotDiv.style.display = "none";
+            forgotLink.innerText = "Forgot My Key";
+        }
+    }
+
+    async function lookupKey() {
+        const nameInput = document.getElementById('recoverPayee').value.trim();
+        const zipInput = document.getElementById('recoverZip').value.trim();
+        const resultDiv = document.getElementById('keyResult');
+        const msgDiv = document.getElementById('keyResultMsg');
+        const keyDiv = document.getElementById('revealedKey');
+        const useBtn = document.getElementById('btnUseKey');
+
+        if (!nameInput || !zipInput) {
+            resultDiv.className = "not-found";
+            resultDiv.style.display = "block";
+            msgDiv.innerText = "Please enter both your name and zip code.";
+            keyDiv.innerText = "";
+            useBtn.style.display = "none";
+            return;
+        }
+
+        // Search for any invoice where payee matches (case-insensitive) and address3 contains the zip
+        const { data, error } = await supabaseClient
+            .from('invoices')
+            .select('payee, user_code, address3')
+            .ilike('payee', '%' + nameInput + '%');
+
+        resultDiv.style.display = "block";
+
+        if (data && data.length > 0) {
+            // Filter client-side for zip match within address3
+            const match = data.find(function(inv) {
+                return inv.address3 && inv.address3.includes(zipInput);
+            });
+
+            if (match) {
+                recoveredKey = match.user_code;
+                resultDiv.className = "found";
+                msgDiv.innerText = "✓ Account found for " + match.payee;
+                keyDiv.innerText = match.user_code;
+                useBtn.style.display = "block";
+            } else {
+                recoveredKey = "";
+                resultDiv.className = "not-found";
+                msgDiv.innerText = "No account matched that name and zip code. Please check your spelling.";
+                keyDiv.innerText = "";
+                useBtn.style.display = "none";
+            }
+        } else {
+            recoveredKey = "";
+            resultDiv.className = "not-found";
+            msgDiv.innerText = "No account found with that name. Please check your spelling.";
+            keyDiv.innerText = "";
+            useBtn.style.display = "none";
+        }
+    }
+
+    function useRecoveredKey() {
+        if (!recoveredKey) return;
+        document.getElementById('accessCode').value = recoveredKey;
+        // Close the forgot key panel
+        isForgotKeyMode = false;
+        document.getElementById('forgotKeyFields').style.display = "none";
+        document.querySelectorAll('.new-user-toggle')[1].innerText = "Forgot My Key";
     }
 
     async function handleLogin() {
