@@ -254,6 +254,22 @@
         .grid-table td { 
             border: 1px solid #dee2e6; 
             padding: 0; 
+            vertical-align: top;
+        }
+
+        /* TEXTAREA WRAPPING FOR DESCRIPTION */
+        .desc-field {
+            width: 100%;
+            border: none;
+            padding: 12px;
+            box-sizing: border-box;
+            font-size: 13px;
+            background: transparent;
+            resize: vertical;
+            min-height: 45px;
+            display: block;
+            font-family: inherit;
+            overflow: hidden;
         }
 
         .item-row input { 
@@ -302,12 +318,20 @@
         }
 
         /* --- BUTTON STYLES --- */
-        .btn { padding: 12px 24px; cursor: pointer; font-weight: bold; border: none; border-radius: 4px; transition: 0.2s; }
+        .btn { 
+            padding: 12px 24px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border: none; 
+            border-radius: 4px; 
+            transition: 0.2s; 
+        }
         .btn-save { background: #6c757d; color: white; }
         .btn-submit { background: #007bff; color: white; }
         .btn-kick { background: #dc3545; color: white; }
         .btn-ready { background: #f39c12; color: white; }
         .btn-paid { background: #28a745; color: white; }
+        .btn-remove-row { background: #e74c3c; color: white; padding: 6px 12px; font-size: 11px; margin-left: 8px; }
         .btn-resubmit { background: #2980b9; color: white; display: none; }
         
         .btn-nav-blue { background: #3498db; color: white; padding: 8px 16px; font-size: 13px; }
@@ -315,13 +339,23 @@
         .btn-nav-red { background: #e74c3c; color: white; padding: 8px 16px; font-size: 13px; }
 
         .grand-total-box { 
-            border: 2px solid #2c3e50; padding: 15px 25px; font-size: 1.4em; font-weight: bold; 
-            background: #fff; border-radius: 8px; display: flex; gap: 40px; 
+            border: 2px solid #2c3e50; 
+            padding: 15px 25px; 
+            font-size: 1.4em; 
+            font-weight: bold; 
+            background: #fff; 
+            border-radius: 8px; 
+            display: flex; 
+            gap: 40px; 
         }
 
         .minimize-btn { cursor: pointer; margin-right: 15px; font-size: 18px; user-select: none; }
 
-        @media print { .btn, #loginOverlay, #profileFields, #sectionAdder, .minimize-btn, .nav-arrow, #masterTopBar { display: none !important; } }
+        @media print { 
+            .btn, #loginOverlay, #profileFields, #sectionAdder, .minimize-btn, .nav-arrow, #masterTopBar { 
+                display: none !important; 
+            } 
+        }
     </style>
 </head>
 <body>
@@ -433,7 +467,9 @@
                 <div>
                     <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 26px; font-weight: bold;">
                     <input type="text" id="firmName" placeholder="Attorney / Firm Name">
-                    <input type="text" id="address1" placeholder="Street Address"><input type="text" id="address2" placeholder="Apt / Suite #"><input type="text" id="address3" placeholder="City, State, Zip">
+                    <input type="text" id="address1" placeholder="Street Address">
+                    <input type="text" id="address2" placeholder="Apt / Suite #">
+                    <input type="text" id="address3" placeholder="City, State, Zip">
                 </div>
                 <div style="text-align: right;">
                     <div>Date: <span id="todayDateDisplay"></span></div>
@@ -498,13 +534,22 @@
     /* --- AUTHENTICATION --- */
     function toggleNewUserFields() {
         isRegistrationMode = !isRegistrationMode;
-        document.getElementById('profileFields').style.display = isRegistrationMode ? "block" : "none";
-        document.querySelector('.new-user-toggle').innerText = isRegistrationMode ? "Cancel Registration" : "New User";
+        
+        if (isRegistrationMode) {
+            document.getElementById('profileFields').style.display = "block";
+            document.querySelector('.new-user-toggle').innerText = "Cancel Registration";
+        } else {
+            document.getElementById('profileFields').style.display = "none";
+            document.querySelector('.new-user-toggle').innerText = "New User";
+        }
     }
 
     async function handleLogin() {
         const code = document.getElementById('accessCode').value.trim();
-        if (!code) return;
+        
+        if (!code) {
+            return;
+        }
 
         currentUserCode = code;
 
@@ -512,45 +557,42 @@
         if (code.toUpperCase() === "FINANCE2026") {
             document.getElementById('loginOverlay').style.display = "none";
             document.getElementById('masterTopBar').style.display = "flex";
+            
             // Admin gets all administrative buttons
             document.getElementById('btnUserAssistance').style.display = "block";
             document.getElementById('btnDataVault').style.display = "block";
+            
             loadFinanceView();
             return;
         }
 
         // Lawyer Registration Flow
         if (isRegistrationMode) {
-            document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
-            document.getElementById('firmName').value = document.getElementById('setupFirm').value;
-            document.getElementById('address1').value = document.getElementById('setupAddress1').value;
-            document.getElementById('address2').value = document.getElementById('setupAddress2').value;
-            document.getElementById('address3').value = document.getElementById('setupAddress3').value;
-            
-            document.getElementById('loginOverlay').style.display = "none";
-            document.getElementById('masterTopBar').style.display = "flex";
-            // Lawyer ONLY sees Logout
-            document.getElementById('btnUserAssistance').style.display = "none";
-            document.getElementById('btnDataVault').style.display = "none";
-            document.getElementById('invoiceView').style.display = "block";
-            renderMonthLabel();
-            calculateInvoices();
+            setupLawyerUI();
             return;
         }
 
         // Existing Lawyer Login Flow
-        const { data } = await supabaseClient.from('invoices').select('*').eq('user_code', code);
+        const { data } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('user_code', code);
         
         if (data && data.length > 0) {
             document.getElementById('loginOverlay').style.display = "none";
             document.getElementById('masterTopBar').style.display = "flex";
+            
             // Lawyer ONLY sees Logout
             document.getElementById('btnUserAssistance').style.display = "none";
             document.getElementById('btnDataVault').style.display = "none";
+            
             document.getElementById('invoiceView').style.display = "block";
             
             // Kickback Check logic
-            const kicked = data.find(function(inv) { return inv.status === 'Sent Back'; });
+            const kicked = data.find(function(inv) { 
+                return inv.status === 'Sent Back'; 
+            });
+            
             if (kicked) {
                 const monthInfo = kicked.month_year.split('_')[0];
                 const yearInfo = kicked.month_year.split('_')[1];
@@ -563,6 +605,25 @@
         } else {
             alert("Access Key not found. Please click 'New User' to register.");
         }
+    }
+
+    function setupLawyerUI() {
+        document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
+        document.getElementById('firmName').value = document.getElementById('setupFirm').value;
+        document.getElementById('address1').value = document.getElementById('setupAddress1').value;
+        document.getElementById('address2').value = document.getElementById('setupAddress2').value;
+        document.getElementById('address3').value = document.getElementById('setupAddress3').value;
+        
+        document.getElementById('loginOverlay').style.display = "none";
+        document.getElementById('masterTopBar').style.display = "flex";
+        
+        document.getElementById('btnUserAssistance').style.display = "none";
+        document.getElementById('btnDataVault').style.display = "none";
+        
+        document.getElementById('invoiceView').style.display = "block";
+        
+        renderMonthLabel();
+        calculateInvoices();
     }
 
     /* --- USER ASSISTANCE --- */
@@ -580,7 +641,11 @@
 
     async function searchUsersForHelp() {
         const query = document.getElementById('helpSearchInput').value.trim();
-        if (query.length < 2) { document.getElementById('helpResultsList').innerHTML = ""; return; }
+        
+        if (query.length < 2) { 
+            document.getElementById('helpResultsList').innerHTML = ""; 
+            return; 
+        }
 
         const { data, error } = await supabaseClient
             .from('invoices')
@@ -652,14 +717,17 @@
             .eq('submitted', true)
             .order('updated_at', { ascending: false });
         
-        const pList = document.getElementById('pendingList');
-        const rList = document.getElementById('readyList');
-        const aList = document.getElementById('paidList');
+        const pendingList = document.getElementById('pendingList');
+        const readyList = document.getElementById('readyList');
+        const paidList = document.getElementById('paidList');
         
-        pList.innerHTML = ""; rList.innerHTML = ""; aList.innerHTML = "";
+        pendingList.innerHTML = ""; 
+        readyList.innerHTML = ""; 
+        paidList.innerHTML = "";
 
         data.forEach(function(inv) {
             let totalDue = 0;
+            
             if (inv.sections) {
                 inv.sections.forEach(function(sec) {
                     const rate = parseFloat(sec.rate) || 0;
@@ -671,26 +739,37 @@
                 });
             }
 
+            let statusActionHTML = "";
+            if (inv.status === 'Ready for Payment') {
+                statusActionHTML = `<button class="btn btn-paid" onclick="updateInvoiceStatus('${inv.month_year}', 'Paid')">Confirm Paid</button>`;
+            } else {
+                statusActionHTML = inv.status;
+            }
+
             const rowHTML = `
                 <tr class="invoice-row">
                     <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
                     <td>${new Date(inv.updated_at).toLocaleDateString()}</td>
                     <td>$${totalDue.toFixed(2)}</td>
-                    <td class="status-cell">
-                        ${inv.status === 'Ready for Payment' ? 
-                            `<button class="btn btn-paid" onclick="updateInvoiceStatus('${inv.month_year}', 'Paid')">Confirm Paid</button>` : 
-                            inv.status}
-                    </td>
+                    <td class="status-cell">${statusActionHTML}</td>
                 </tr>`;
             
-            if (inv.status === 'Paid') aList.innerHTML += rowHTML;
-            else if (inv.status === 'Ready for Payment') rList.innerHTML += rowHTML;
-            else pList.innerHTML += rowHTML;
+            if (inv.status === 'Paid') {
+                paidList.innerHTML += rowHTML;
+            } else if (inv.status === 'Ready for Payment') {
+                readyList.innerHTML += rowHTML;
+            } else {
+                pendingList.innerHTML += rowHTML;
+            }
         });
     }
 
     async function updateInvoiceStatus(id, newStatus) {
-        await supabaseClient.from('invoices').update({ status: newStatus }).eq('month_year', id);
+        await supabaseClient
+            .from('invoices')
+            .update({ status: newStatus })
+            .eq('month_year', id);
+            
         loadFinanceView(); 
     }
 
@@ -711,14 +790,20 @@
 
         let nameHTML = "";
         if (cat === "Defender" || cat === "Paralegal Services") {
-            nameHTML = '<input type="text" class="sec-name" value="' + (saved?.personName || '') + '">';
+            const savedName = saved && saved.personName ? saved.personName : '';
+            nameHTML = `<input type="text" class="sec-name" value="${savedName}">`;
         }
+
+        const savedRate = saved && saved.rate ? saved.rate : 0;
 
         sectionDiv.innerHTML = `
             <div class="section-bar">
-                <span><span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span> ${cat} ${nameHTML}</span>
+                <span>
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span> 
+                    ${cat} ${nameHTML}
+                </span>
                 <div>
-                    Rate: $<input type="number" class="rate-box" value="${saved?.rate || 0}" oninput="calculateInvoices()"> 
+                    Rate: $<input type="number" class="rate-box" value="${savedRate}" oninput="calculateInvoices()"> 
                     <button style="color:red; background:none; border:none; cursor:pointer;" onclick="deleteSection('${id}')">✕</button>
                 </div>
             </div>
@@ -739,12 +824,18 @@
                         <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
                     </tr>
                 </table>
-                <button class="btn btn-save" style="font-size:11px; margin-top:10px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
+                <div style="margin-top:10px;">
+                    <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
+                    <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
+                </div>
             </div>`;
 
         document.getElementById('invoiceContainer').appendChild(sectionDiv);
+        
         if (saved && saved.rows) {
-            saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
+            saved.rows.forEach(function(r) { 
+                addInvoiceRow(id, r); 
+            });
         } else {
             addInvoiceRow(id);
         }
@@ -755,10 +846,20 @@
         const row = document.createElement('tr');
         row.className = "item-row";
         
+        const dateValue = rowData && rowData.date ? rowData.date : '';
+        const descValue = rowData && rowData.desc ? rowData.desc : '';
+        const timeValue = rowData && rowData.time ? rowData.time : '';
+        
         row.innerHTML = `
-            <td><input type="date" class="date-check" value="${rowData?.date || ''}" onchange="calculateInvoices()"></td>
-            <td><input type="text" value="${rowData?.desc || ''}" placeholder="..."></td>
-            <td><input type="number" step="0.01" class="time-field" value="${rowData?.time || ''}" onchange="calculateInvoices()"></td>
+            <td>
+                <input type="date" class="date-check" value="${dateValue}" onchange="calculateInvoices()">
+            </td>
+            <td>
+                <textarea class="desc-field" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${descValue}</textarea>
+            </td>
+            <td>
+                <input type="number" step="0.01" class="time-field" value="${timeValue}" onchange="calculateInvoices()">
+            </td>
             <td class="row-amt" style="text-align:right; padding-right:15px;">$0.00</td>
         `;
         
@@ -766,9 +867,21 @@
         calculateInvoices();
     }
 
+    function removeLastRow(sectionId) {
+        const tbody = document.getElementById("body-" + sectionId);
+        if (tbody.rows.length > 0) {
+            tbody.deleteRow(-1);
+            calculateInvoices();
+        }
+    }
+
     function toggleSectionBody(id) {
         const content = document.getElementById("content-" + id);
-        content.style.display = (content.style.display === "none") ? "block" : "none";
+        if (content.style.display === "none") {
+            content.style.display = "block";
+        } else {
+            content.style.display = "none";
+        }
     }
 
     function deleteSection(id) {
@@ -779,44 +892,56 @@
     }
 
     function calculateInvoices() {
-        let globalHrs = 0; let globalVal = 0;
+        let globalHrs = 0; 
+        let globalVal = 0;
+        
         const currentMonth = currentInvoiceDate.getMonth();
         const currentYear = currentInvoiceDate.getFullYear();
 
         document.querySelectorAll('[id^="sec-"]').forEach(function(section) {
-            let sHrs = 0; let sVal = 0;
+            let sectionHrs = 0; 
+            let sectionVal = 0;
             const rate = parseFloat(section.querySelector('.rate-box').value) || 0;
             
             section.querySelectorAll('.item-row').forEach(function(row) {
-                // DATE MISMATCH
-                const dInput = row.querySelector('.date-check');
-                if (dInput.value) {
-                    const eD = new Date(dInput.value + 'T00:00:00');
-                    if (eD.getUTCMonth() !== currentMonth || eD.getUTCFullYear() !== currentYear) {
-                        dInput.classList.add('date-mismatch');
+                // DATE MISMATCH CHECK
+                const dateInput = row.querySelector('.date-check');
+                if (dateInput.value) {
+                    const enteredDate = new Date(dateInput.value + 'T00:00:00');
+                    if (enteredDate.getUTCMonth() !== currentMonth || enteredDate.getUTCFullYear() !== currentYear) {
+                        dateInput.classList.add('date-mismatch');
                     } else {
-                        dInput.classList.remove('date-mismatch');
+                        dateInput.classList.remove('date-mismatch');
                     }
                 }
 
-                // PRECISION ROUNDING
-                const tInput = row.querySelector('.time-field');
-                let tNum = parseFloat(tInput.value) || 0;
-                if (tNum > 0) {
-                    let hundredths = Math.round((tNum * 100) % 10);
-                    tNum = (hundredths >= 5) ? Math.ceil(tNum * 10) / 10 : Math.floor(tNum * 10) / 10;
-                    tInput.value = tNum.toFixed(2);
+                // PRECISION ROUNDING (Tenths)
+                const timeInput = row.querySelector('.time-field');
+                let timeNum = parseFloat(timeInput.value) || 0;
+                
+                if (timeNum > 0) {
+                    let hundredths = Math.round((timeNum * 100) % 10);
+                    if (hundredths >= 5) {
+                        timeNum = Math.ceil(timeNum * 10) / 10;
+                    } else {
+                        timeNum = Math.floor(timeNum * 10) / 10;
+                    }
+                    timeInput.value = timeNum.toFixed(2);
                 }
 
-                const lineAmt = tNum * rate;
+                const lineAmt = timeNum * rate;
                 row.querySelector('.row-amt').innerText = "$" + lineAmt.toFixed(2);
-                sHrs += tNum; sVal += lineAmt;
+                
+                sectionHrs += timeNum; 
+                sectionVal += lineAmt;
             });
 
-            const sid = section.id.replace('sec-', '');
-            document.getElementById("hrs-" + sid).innerText = sHrs.toFixed(2);
-            document.getElementById("val-" + sid).innerText = "$" + sVal.toFixed(2);
-            globalHrs += sHrs; globalVal += sVal;
+            const sectionIdNumber = section.id.replace('sec-', '');
+            document.getElementById("hrs-" + sectionIdNumber).innerText = sectionHrs.toFixed(2);
+            document.getElementById("val-" + sectionIdNumber).innerText = "$" + sectionVal.toFixed(2);
+            
+            globalHrs += sectionHrs; 
+            globalVal += sectionVal;
         });
 
         document.getElementById('totalHoursDisplay').innerText = globalHrs.toFixed(2);
@@ -825,26 +950,40 @@
 
     /* --- DATA MANAGEMENT --- */
     async function syncInvoiceData(final) {
-        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(s) {
+        const sectionsArray = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(sectionElement) {
+            
+            const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0];
+            const personNameInput = sectionElement.querySelector('.sec-name');
+            const rateInput = sectionElement.querySelector('.rate-box');
+            
+            const rowsArray = Array.from(sectionElement.querySelectorAll('.item-row')).map(function(rowElement) {
+                return {
+                    date: rowElement.cells[0].querySelector('input').value,
+                    desc: rowElement.cells[1].querySelector('textarea').value,
+                    time: rowElement.cells[2].querySelector('input').value
+                };
+            });
+
             return {
-                id: s.id.replace('sec-', ''),
-                category: s.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0],
-                personName: s.querySelector('.sec-name')?.value || "",
-                rate: s.querySelector('.rate-box').value,
-                rows: Array.from(s.querySelectorAll('.item-row')).map(function(r) {
-                    return {
-                        date: r.cells[0].querySelector('input').value,
-                        desc: r.cells[1].querySelector('input').value,
-                        time: r.cells[2].querySelector('input').value
-                    };
-                })
+                id: sectionElement.id.replace('sec-', ''),
+                category: categoryText,
+                personName: personNameInput ? personNameInput.value : "",
+                rate: rateInput.value,
+                rows: rowsArray
             };
         });
 
-        const key = months[currentInvoiceDate.getMonth()] + "_" + currentInvoiceDate.getFullYear() + "_" + currentUserCode;
+        const monthString = months[currentInvoiceDate.getMonth()];
+        const yearString = currentInvoiceDate.getFullYear();
+        const primaryKey = monthString + "_" + yearString + "_" + currentUserCode;
+
+        let statusText = 'Draft';
+        if (final) {
+            statusText = 'Pending';
+        }
 
         const payload = {
-            month_year: key,
+            month_year: primaryKey,
             user_code: currentUserCode,
             payee: document.getElementById('payeeName').value,
             firm: document.getElementById('firmName').value,
@@ -852,61 +991,47 @@
             address2: document.getElementById('address2').value,
             address3: document.getElementById('address3').value,
             inv_num: document.getElementById('invNum').value,
-            sections: sections,
+            sections: sectionsArray,
             submitted: final,
-            status: final ? 'Pending' : 'Draft',
+            status: statusText,
             updated_at: new Date().toISOString()
         };
 
-        const { error } = await supabaseClient.from('invoices').upsert(payload, { onConflict: 'month_year' });
-        if (final && !error) alert("Submitted to Finance!");
-    }
-
-    async function resubmitCorrections() {
-        const sections = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(s) {
-            return {
-                id: s.id.replace('sec-', ''),
-                category: s.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0],
-                personName: s.querySelector('.sec-name')?.value || "",
-                rate: s.querySelector('.rate-box').value,
-                rows: Array.from(s.querySelectorAll('.item-row')).map(function(r) {
-                    return {
-                        date: r.cells[0].querySelector('input').value,
-                        desc: r.cells[1].querySelector('input').value,
-                        time: r.cells[2].querySelector('input').value
-                    };
-                })
-            };
-        });
-
-        const key = months[currentInvoiceDate.getMonth()] + "_" + currentInvoiceDate.getFullYear() + "_" + currentUserCode;
-
-        const payload = {
-            month_year: key,
-            user_code: currentUserCode,
-            payee: document.getElementById('payeeName').value,
-            firm: document.getElementById('firmName').value,
-            address1: document.getElementById('address1').value,
-            address2: document.getElementById('address2').value,
-            address3: document.getElementById('address3').value,
-            inv_num: document.getElementById('invNum').value,
-            sections: sections,
-            submitted: true,
-            status: 'Corrected',
-            updated_at: new Date().toISOString()
-        };
-
-        const { error } = await supabaseClient.from('invoices').upsert(payload, { onConflict: 'month_year' });
-        if (!error) {
-            alert("Corrections Resubmitted!");
-            // Stay logged in refresh
-            loadUserData();
+        const { error } = await supabaseClient
+            .from('invoices')
+            .upsert(payload, { onConflict: 'month_year' });
+            
+        if (final && !error) {
+            alert("Submitted to Finance!");
         }
     }
 
+    async function resubmitCorrections() {
+        await syncInvoiceData(true);
+        
+        const monthString = months[currentInvoiceDate.getMonth()];
+        const yearString = currentInvoiceDate.getFullYear();
+        const primaryKey = monthString + "_" + yearString + "_" + currentUserCode;
+        
+        await supabaseClient
+            .from('invoices')
+            .update({ status: 'Corrected' })
+            .eq('month_year', primaryKey);
+            
+        alert("Corrections Resubmitted!");
+        loadUserData();
+    }
+
     async function loadUserData() {
-        const key = months[currentInvoiceDate.getMonth()] + "_" + currentInvoiceDate.getFullYear() + "_" + currentUserCode;
-        const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', key).single();
+        const monthString = months[currentInvoiceDate.getMonth()];
+        const yearString = currentInvoiceDate.getFullYear();
+        const primaryKey = monthString + "_" + yearString + "_" + currentUserCode;
+        
+        const { data } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('month_year', primaryKey)
+            .single();
         
         if (data) {
             document.getElementById('payeeName').value = data.payee || "";
@@ -917,7 +1042,10 @@
             document.getElementById('invNum').value = data.inv_num || "";
             
             document.getElementById('invoiceContainer').innerHTML = "";
-            data.sections.forEach(function(s) { createNewInvoiceSection(s); });
+            
+            data.sections.forEach(function(sectionData) { 
+                createNewInvoiceSection(sectionData); 
+            });
             
             if (data.status === 'Sent Back') {
                 document.getElementById('btnSync').style.display = "none";
@@ -930,13 +1058,17 @@
                 document.getElementById('btnExcel').style.display = "block";
                 document.getElementById('btnResubmit').style.display = "none";
             }
+            
             calculateInvoices();
+            
         } else {
             document.getElementById('invoiceContainer').innerHTML = "";
+            
             document.getElementById('btnSync').style.display = "block";
             document.getElementById('btnSubmit').style.display = "block";
             document.getElementById('btnExcel').style.display = "block";
             document.getElementById('btnResubmit').style.display = "none";
+            
             calculateInvoices();
         }
     }
@@ -946,47 +1078,87 @@
         document.getElementById('masterDashboard').style.display = "none";
         document.getElementById('invoiceView').style.display = "block";
         document.getElementById('backBtn').style.display = "block";
+        
         document.getElementById('userActions').style.display = "none";
         document.getElementById('adminActions').style.display = "flex";
+        
         document.getElementById('sectionAdder').style.display = "none";
         document.getElementById('userPrev').style.display = "none";
         document.getElementById('userNext').style.display = "none";
 
-        const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', id).single();
+        const { data } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('month_year', id)
+            .single();
+            
         if (data) {
-            document.getElementById('payeeName').value = data.payee;
-            document.getElementById('firmName').value = data.firm;
-            document.getElementById('address1').value = data.address1;
-            document.getElementById('address2').value = data.address2;
-            document.getElementById('address3').value = data.address3;
-            document.getElementById('invNum').value = data.inv_num;
+            document.getElementById('payeeName').value = data.payee || "";
+            document.getElementById('firmName').value = data.firm || "";
+            document.getElementById('address1').value = data.address1 || "";
+            document.getElementById('address2').value = data.address2 || "";
+            document.getElementById('address3').value = data.address3 || "";
+            document.getElementById('invNum').value = data.inv_num || "";
+            
             document.getElementById('invoiceContainer').innerHTML = "";
-            data.sections.forEach(function(s) { createNewInvoiceSection(s); });
+            
+            data.sections.forEach(function(sectionData) { 
+                createNewInvoiceSection(sectionData); 
+            });
+            
             calculateInvoices();
         }
     }
 
     function downloadExcel() {
-        let d = [
-            [document.getElementById('payeeName').value], [document.getElementById('firmName').value], 
-            [document.getElementById('address1').value], [document.getElementById('address2').value], [document.getElementById('address3').value],
-            [], ["Date:", new Date().toLocaleDateString()], ["Inv #:", document.getElementById('invNum').value], []
+        let excelData = [
+            [document.getElementById('payeeName').value], 
+            [document.getElementById('firmName').value], 
+            [document.getElementById('address1').value], 
+            [document.getElementById('address2').value], 
+            [document.getElementById('address3').value],
+            [], 
+            ["Date:", new Date().toLocaleDateString()], 
+            ["Inv #:", document.getElementById('invNum').value], 
+            []
         ];
-        document.querySelectorAll('[id^="sec-"]').forEach(function(s) {
-            let h = s.querySelector('.section-bar span').innerText.replace('▼ ', '');
-            d.push([h.toUpperCase(), "", "", "Rate:", "$" + s.querySelector('.rate-box').value]);
-            d.push(["Date", "Desc", "Time", "Amount"]);
-            s.querySelectorAll('.item-row').forEach(function(row) {
-                const i = row.querySelectorAll('input');
-                d.push([i[0].value, i[1].value, i[2].value, row.querySelector('.row-amt').innerText]);
+        
+        document.querySelectorAll('[id^="sec-"]').forEach(function(sectionElement) {
+            let headerText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '');
+            let rateValue = sectionElement.querySelector('.rate-box').value;
+            
+            excelData.push([headerText.toUpperCase(), "", "", "Rate:", "$" + rateValue]);
+            excelData.push(["Date", "Desc", "Time", "Amount"]);
+            
+            sectionElement.querySelectorAll('.item-row').forEach(function(rowElement) {
+                const dateVal = rowElement.cells[0].querySelector('input').value;
+                const descVal = rowElement.cells[1].querySelector('textarea').value;
+                const timeVal = rowElement.cells[2].querySelector('input').value;
+                const amountVal = rowElement.querySelector('.row-amt').innerText;
+                
+                excelData.push([dateVal, descVal, timeVal, amountVal]);
             });
-            const sid = s.id.replace('sec-', '');
-            d.push(["", "SUBTOTAL", document.getElementById("hrs-" + sid).innerText, document.getElementById("val-" + sid).innerText]);
-            d.push([]);
+            
+            const sectionIdNumber = sectionElement.id.replace('sec-', '');
+            const subtotalHrs = document.getElementById("hrs-" + sectionIdNumber).innerText;
+            const subtotalVal = document.getElementById("val-" + sectionIdNumber).innerText;
+            
+            excelData.push(["", "SUBTOTAL", subtotalHrs, subtotalVal]);
+            excelData.push([]);
         });
-        d.push(["SUMMARY"], ["Total Hours:", document.getElementById('totalHoursDisplay').innerText], ["Grand Total:", document.getElementById('grandTotalDisplay').innerText]);
-        const ws = XLSX.utils.aoa_to_sheet(d); const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Invoice"); XLSX.writeFile(wb, "Invoice_" + currentUserCode + ".xlsx");
+        
+        const totalHrs = document.getElementById('totalHoursDisplay').innerText;
+        const grandTotal = document.getElementById('grandTotalDisplay').innerText;
+        
+        excelData.push(["SUMMARY"]);
+        excelData.push(["Total Hours:", totalHrs]);
+        excelData.push(["Grand Total:", grandTotal]);
+        
+        const worksheet = XLSX.utils.aoa_to_sheet(excelData); 
+        const workbook = XLSX.utils.book_new();
+        
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice"); 
+        XLSX.writeFile(workbook, "Invoice_" + currentUserCode + ".xlsx");
     }
 </script>
 </body>
