@@ -1,7 +1,2023 @@
-.receipt-overlay { /* styles for the overlay */ }
-.receipt-modal { /* styles for the modal */ }
-.receipt-header { /* styles for the header */ }
-.receipt-section { /* styles for each section */ }
-.receipt-footer { /* styles for the footer */ }
-@media print {
-  /* existing styles */ }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Invoice Portal - Master System</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        /* --- GLOBAL STYLES --- */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            background-color: #f0f2f5; 
+            color: #1c1e21; 
+        }
+
+        .container { 
+            max-width: 1200px; 
+            margin: 40px auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            position: relative;
+        }
+
+        /* --- MASTER TOP NAVIGATION BAR --- */
+        #masterTopBar {
+            display: none;
+            background: #2c3e50;
+            margin: -30px -30px 30px -30px;
+            padding: 10px 30px;
+            border-radius: 12px 12px 0 0;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        /* --- USER ASSISTANCE MODAL --- */
+        #assistanceModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            z-index: 2000;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #assistanceOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1999;
+        }
+
+        .assistance-search input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #3498db;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        .result-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+        .result-item:hover {
+            background: #f1f8ff;
+        }
+
+        /* --- LOGIN SYSTEM --- */
+        #loginOverlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.95); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 1000; 
+        }
+
+        .login-box { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 8px; 
+            text-align: center; 
+            width: 420px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+        }
+
+        .login-box input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+            font-size: 15px; 
+        }
+
+        #profileFields { 
+            display: none; 
+            margin-top: 15px; 
+            border-top: 1px solid #eee; 
+            padding-top: 15px; 
+            text-align: left; 
+        }
+
+        .new-user-toggle {
+            display: block;
+            margin-top: 15px;
+            color: #007bff;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* --- FORGOT KEY --- */
+        #forgotKeyFields {
+            display: none;
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            text-align: left;
+        }
+
+        #forgotKeyFields label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #8e44ad;
+        }
+
+        #keyResult {
+            display: none;
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #keyResult.found {
+            background: #eaf7ee;
+            border: 1px solid #27ae60;
+            color: #1a6b3a;
+        }
+
+        #keyResult.not-found {
+            background: #fdecea;
+            border: 1px solid #e74c3c;
+            color: #922b21;
+        }
+
+        #keyResult .revealed-key {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin: 8px 0 4px;
+            color: #2c3e50;
+        }
+
+        .btn-use-key {
+            margin-top: 10px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        /* --- DASHBOARD STYLES --- */
+        #masterDashboard, #invoiceView { 
+            display: none; 
+        }
+
+        .dash-header { 
+            background: #f8f9fa; 
+            border: 1px solid #dee2e6;
+            color: #2c3e50; 
+            padding: 25px; 
+            border-radius: 8px; 
+            text-align: center; 
+            margin-bottom: 30px; 
+        }
+
+        .invoice-list { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 30px;
+        }
+
+        .invoice-list th {
+            text-align: left;
+            padding: 12px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 12px;
+            color: #495057;
+            text-transform: uppercase;
+        }
+
+        .invoice-list th:last-child {
+            text-align: center;
+        }
+
+        .invoice-row td { 
+            padding: 15px 12px; 
+            border-bottom: 1px solid #eee; 
+            background: #fff; 
+        }
+
+        .invoice-row td:first-child { 
+            font-weight: bold; 
+            color: #007bff; 
+            cursor: pointer; 
+        }
+
+        .status-cell {
+            text-align: center;
+        }
+
+        /* --- INVOICE HEADER --- */
+        .payee-info { 
+            border: 1px solid #eee; 
+            padding: 25px; 
+            border-radius: 8px; 
+            background: #fafafa; 
+            margin-bottom: 25px; 
+        }
+
+        .header-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 40px; 
+        }
+
+        .payee-info input { 
+            border: none; 
+            border-bottom: 1px solid #ddd; 
+            width: 100%; 
+            padding: 6px; 
+            margin: 4px 0; 
+            background: transparent; 
+            outline: none; 
+        }
+
+        /* --- MONTH NAVIGATION --- */
+        .month-nav { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 30px; 
+            margin-bottom: 25px; 
+            padding: 15px; 
+            background: #fff; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+        }
+
+        .nav-arrow { 
+            font-size: 24px; 
+            cursor: pointer; 
+            user-select: none; 
+            padding: 5px 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            background: #fff; 
+        }
+
+        /* --- GRID & TABLE STYLES --- */
+        .grid-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+            table-layout: fixed; 
+        }
+
+        .grid-table th { 
+            background-color: #f8f9fa; 
+            border: 1px solid #dee2e6; 
+            padding: 12px; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+        }
+
+        .grid-table td { 
+            border: 1px solid #dee2e6; 
+            padding: 0; 
+            vertical-align: top;
+        }
+
+        /* TEXTAREA WRAPPING FOR DESCRIPTION */
+        .desc-field {
+            width: 100%;
+            border: none;
+            padding: 12px;
+            box-sizing: border-box;
+            font-size: 13px;
+            background: transparent;
+            resize: vertical;
+            min-height: 45px;
+            display: block;
+            font-family: inherit;
+            overflow: hidden;
+        }
+
+        .item-row input { 
+            width: 100%; 
+            border: none; 
+            padding: 12px; 
+            box-sizing: border-box; 
+            font-size: 13px; 
+            background: transparent; 
+        }
+
+        .date-mismatch { background-color: #ffdce0 !important; }
+
+        /* --- SECTION BARS --- */
+        .section-bar { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: #2c3e50; 
+            color: white; 
+            padding: 12px 15px; 
+            font-weight: bold; 
+            border-radius: 4px 4px 0 0;
+        }
+
+        .sec-name { 
+            background: white !important; 
+            color: #2c3e50 !important; 
+            border: 1px solid #ccc !important; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            width: 150px; 
+            font-weight: bold; 
+            margin-left: 15px;
+        }
+
+        .rate-box { 
+            background: white !important; 
+            color: #2c3e50 !important; 
+            border: 1px solid #ccc !important; 
+            border-radius: 4px; 
+            padding: 4px; 
+            width: 60px; 
+            font-weight: bold;
+            margin-left: 5px;
+        }
+
+        /* --- BUTTON STYLES --- */
+        .btn { 
+            padding: 12px 24px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border: none; 
+            border-radius: 4px; 
+            transition: 0.2s; 
+        }
+        .btn-save { background: #6c757d; color: white; }
+        .btn-submit { background: #007bff; color: white; }
+        .btn-kick { background: #dc3545; color: white; }
+        .btn-ready { background: #f39c12; color: white; }
+        .btn-paid { background: #28a745; color: white; }
+        .btn-remove-row { background: #e74c3c; color: white; padding: 6px 12px; font-size: 11px; margin-left: 8px; }
+        .btn-resubmit { background: #2980b9; color: white; display: none; }
+        
+        .btn-nav-blue { background: #3498db; color: white; padding: 8px 16px; font-size: 13px; }
+        .btn-nav-grey { background: #7f8c8d; color: white; padding: 8px 16px; font-size: 13px; }
+        .btn-nav-red { background: #e74c3c; color: white; padding: 8px 16px; font-size: 13px; }
+
+        .grand-total-box { 
+            border: 2px solid #2c3e50; 
+            padding: 15px 25px; 
+            font-size: 1.4em; 
+            font-weight: bold; 
+            background: #fff; 
+            border-radius: 8px; 
+            display: flex; 
+            gap: 40px; 
+        }
+
+        .minimize-btn { cursor: pointer; margin-right: 15px; font-size: 18px; user-select: none; }
+
+        /* =====================================================
+           DATA VAULT STYLES
+           ===================================================== */
+
+        #dataVaultView {
+            display: none;
+        }
+
+        .vault-header {
+            background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+            color: white;
+            padding: 28px 30px;
+            border-radius: 8px;
+            margin-bottom: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .vault-header h1 {
+            margin: 0 0 4px 0;
+            font-size: 26px;
+            letter-spacing: -0.5px;
+        }
+
+        .vault-header p {
+            margin: 0;
+            opacity: 0.7;
+            font-size: 13px;
+        }
+
+        /* --- TIME PERIOD TOGGLE --- */
+        .period-controls {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .period-controls label {
+            font-weight: 700;
+            font-size: 13px;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .period-toggle-group {
+            display: flex;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .period-btn {
+            padding: 8px 18px;
+            border: none;
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            transition: all 0.15s;
+        }
+
+        .period-btn.active {
+            background: #2c3e50;
+            color: white;
+        }
+
+        .period-btn:not(:last-child) {
+            border-right: 1px solid #ccc;
+        }
+
+        .period-selectors {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .period-selectors select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-load-vault {
+            background: #2c3e50;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-load-vault:hover { background: #1a252f; }
+
+        /* --- KPI CARDS --- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            border-radius: 10px;
+            padding: 22px 24px;
+            border-left: 5px solid transparent;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        }
+
+        .kpi-card.pending { border-left-color: #e74c3c; }
+        .kpi-card.approved { border-left-color: #f39c12; }
+        .kpi-card.paid { border-left-color: #27ae60; }
+
+        .kpi-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .kpi-card.pending .kpi-value { color: #e74c3c; }
+        .kpi-card.approved .kpi-value { color: #f39c12; }
+        .kpi-card.paid .kpi-value { color: #27ae60; }
+
+        .kpi-sub {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        /* --- VAULT SECTION WRAPPER --- */
+        .vault-section {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            margin-bottom: 28px;
+            overflow: hidden;
+        }
+
+        .vault-section-header {
+            background: #f8f9fa;
+            padding: 14px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .vault-section-header h3 {
+            margin: 0;
+            font-size: 15px;
+            color: #2c3e50;
+        }
+
+        .vault-section-header .section-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .vault-section-body {
+            padding: 20px;
+        }
+
+        /* --- SPEND BY CATEGORY --- */
+        .category-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px;
+        }
+
+        .cat-card {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .cat-card .cat-name {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .cat-card .cat-amt {
+            font-size: 22px;
+            font-weight: 800;
+            color: #2c3e50;
+        }
+
+        .cat-card .cat-hrs {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        .cat-bar {
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .cat-bar-fill {
+            height: 100%;
+            background: #3498db;
+            border-radius: 2px;
+            transition: width 0.6s ease;
+        }
+
+        /* --- PAYEE LEDGER TABLE --- */
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ledger-table th {
+            text-align: left;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #666;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .ledger-table th:hover { background: #e9ecef; }
+
+        .ledger-table th .sort-icon {
+            margin-left: 5px;
+            opacity: 0.4;
+        }
+
+        .ledger-table th.sorted .sort-icon {
+            opacity: 1;
+        }
+
+        .ledger-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .ledger-table tr:hover td { background: #fafafa; }
+
+        .ledger-table td.payee-name-cell {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .status-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .pill-paid { background: #d4edda; color: #155724; }
+        .pill-pending { background: #f8d7da; color: #721c24; }
+        .pill-approved { background: #fff3cd; color: #856404; }
+        .pill-draft { background: #e2e3e5; color: #383d41; }
+        .pill-corrected { background: #cce5ff; color: #004085; }
+        .pill-sentback { background: #f8d7da; color: #721c24; }
+
+        .btn-jump-invoice {
+            background: none;
+            border: 1px solid #007bff;
+            color: #007bff;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-jump-invoice:hover {
+            background: #007bff;
+            color: white;
+        }
+
+        /* --- MASTER EXPORT --- */
+        .export-row {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .export-description {
+            font-size: 13px;
+            color: #666;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .btn-master-export {
+            background: #1f6e43;
+            color: white;
+            padding: 12px 28px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-master-export:hover { background: #165a36; }
+
+        .vault-loading {
+            text-align: center;
+            padding: 40px;
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        @media print { 
+            .btn, #loginOverlay, #profileFields, #sectionAdder, .minimize-btn, .nav-arrow, #masterTopBar { 
+                display: none !important; 
+            } 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="masterTopBar">
+        <div class="nav-group">
+            <button class="btn btn-nav-blue" id="btnUserAssistance" style="display:none;" onclick="openAssistance()">User Assistance</button>
+        </div>
+        <div class="nav-group">
+            <button class="btn btn-nav-grey" id="btnDataVault" style="display:none;" onclick="openDataVault()">Data Vault</button>
+            <button class="btn btn-nav-red" onclick="location.reload()">Logout</button>
+        </div>
+    </div>
+
+    <div id="assistanceOverlay" onclick="closeAssistance()"></div>
+    <div id="assistanceModal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">User Assistance</h2>
+            <button class="btn btn-nav-red" style="padding:4px 8px;" onclick="closeAssistance()">✕</button>
+        </div>
+        <div class="assistance-search">
+            <p style="font-size:13px; color:#666;">Search by Lawyer Name or Access Key to recover info.</p>
+            <input type="text" id="helpSearchInput" placeholder="Enter name or key..." oninput="searchUsersForHelp()">
+        </div>
+        <div id="helpResultsList"></div>
+    </div>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2>Secure Legal Portal</h2>
+            <input type="password" id="accessCode" placeholder="Enter Access Key">
+            <span class="new-user-toggle" onclick="toggleNewUserFields()">New User</span>
+            <div id="profileFields">
+                <label style="font-size: 11px; font-weight: bold; color: #e67e22;">NEW USER SETUP</label>
+                <input type="text" id="setupPayee" placeholder="Full Name (Payee)">
+                <input type="text" id="setupFirm" placeholder="Attorney / Firm Name">
+                <input type="text" id="setupAddress1" placeholder="Street Address">
+                <input type="text" id="setupAddress2" placeholder="Apt / Suite #">
+                <input type="text" id="setupAddress3" placeholder="City, State, Zip">
+            </div>
+            <span class="new-user-toggle" style="color:#8e44ad;" onclick="toggleForgotKey()">Forgot My Key</span>
+            <div id="forgotKeyFields">
+                <label>KEY RECOVERY</label>
+                <input type="text" id="recoverPayee" placeholder="Full Name (as registered)" style="margin-top:8px;">
+                <input type="text" id="recoverZip" placeholder="Zip Code (as registered)" style="margin-top:6px;">
+                <button class="btn" style="width:100%; margin-top:12px; background:#8e44ad; color:white;" onclick="lookupKey()">Find My Key</button>
+                <div id="keyResult">
+                    <div id="keyResultMsg"></div>
+                    <div class="revealed-key" id="revealedKey"></div>
+                    <button class="btn-use-key" id="btnUseKey" onclick="useRecoveredKey()" style="display:none;">Use This Key to Login →</button>
+                </div>
+            </div>
+            <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
+        </div>
+    </div>
+
+    <!-- FINANCE MASTER DASHBOARD -->
+    <div id="masterDashboard">
+        <div class="dash-header">
+            <h1>Finance Master Dashboard</h1>
+            <p>Processing submissions and verifying global payments</p>
+        </div>
+
+        <div class="month-nav">
+            <span class="nav-arrow" onclick="changeActiveMonth(-1)">&#10094;</span>
+            <h2 id="adminMonthDisplay" style="margin: 0; min-width: 200px; text-align: center;">April 2026</h2>
+            <span class="nav-arrow" onclick="changeActiveMonth(1)">&#10095;</span>
+        </div>
+        
+        <h3>1. Pending Submissions</h3>
+        <table class="invoice-list">
+            <thead>
+                <tr>
+                    <th>Payee</th>
+                    <th>Date Submitted</th>
+                    <th>Amount Due</th>
+                    <th style="text-align:center">Status</th>
+                </tr>
+            </thead>
+            <tbody id="pendingList"></tbody>
+        </table>
+        
+        <h3 style="color:#f39c12; margin-top: 40px;">2. Ready for Payment (Reviewed)</h3>
+        <table class="invoice-list">
+            <thead>
+                <tr>
+                    <th>Payee</th>
+                    <th>Date Submitted</th>
+                    <th>Amount Due</th>
+                    <th style="text-align:center">Status</th>
+                </tr>
+            </thead>
+            <tbody id="readyList"></tbody>
+        </table>
+        
+        <h3 style="color:#28a745; margin-top: 40px;">3. Paid Archive</h3>
+        <table class="invoice-list">
+            <thead>
+                <tr>
+                    <th>Payee</th>
+                    <th>Date Submitted</th>
+                    <th>Amount Due</th>
+                    <th style="text-align:center">Status</th>
+                </tr>
+            </thead>
+            <tbody id="paidList"></tbody>
+        </table>
+    </div>
+
+    <!-- INVOICE VIEW -->
+    <div id="invoiceView">
+        <button onclick="navigateBackToDashboard()" id="backBtn" style="display:none; margin-bottom:20px;">⬅ Back to Dashboard</button>
+        
+        <div class="month-nav">
+            <span class="nav-arrow" id="userPrev" onclick="changeActiveMonth(-1)">&#10094;</span>
+            <h2 id="currentMonthDisplay" style="margin: 0; min-width: 200px; text-align: center;">April 2026</h2>
+            <span class="nav-arrow" id="userNext" onclick="changeActiveMonth(1)">&#10095;</span>
+        </div>
+        
+        <div class="payee-info">
+            <div class="header-grid">
+                <div>
+                    <input type="text" id="payeeName" placeholder="PAYEE NAME" style="font-size: 26px; font-weight: bold;">
+                    <input type="text" id="firmName" placeholder="Attorney / Firm Name">
+                    <input type="text" id="address1" placeholder="Street Address">
+                    <input type="text" id="address2" placeholder="Apt / Suite #">
+                    <input type="text" id="address3" placeholder="City, State, Zip">
+                </div>
+                <div style="text-align: right;">
+                    <div>Date: <span id="todayDateDisplay"></span></div>
+                    <div style="margin-top:10px;">
+                        Invoice #: <input type="text" id="invNum" style="width: 120px; text-align: right; border-bottom: 1px solid #000;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="invoiceContainer"></div>
+
+        <div id="sectionAdder" style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px;">
+            <strong>Add Billing Category:</strong>
+            <select id="categorySelector" style="padding:8px; margin:0 10px;">
+                <option value="Defender">Defender</option>
+                <option value="Paralegal Services">Paralegal Services</option>
+                <option value="Expenses">Expenses</option>
+                <option value="Training">Training</option>
+                <option value="MCLAP General">MCLAP General</option>
+            </select>
+            <button class="btn btn-submit" onclick="createNewInvoiceSection()">+ Add to Invoice</button>
+        </div>
+
+        <div style="margin-top:40px; display:flex; justify-content:space-between; align-items:center; border-top: 2px solid #eee; padding-top:25px;">
+            <div id="userActions" style="display:flex; gap:12px;">
+                <button class="btn btn-save" id="btnSync" onclick="syncInvoiceData(false)">Sync Progress</button>
+                <button class="btn btn-submit" id="btnSubmit" onclick="syncInvoiceData(true)">Submit for Review</button>
+                <button class="btn btn-resubmit" id="btnResubmit" onclick="resubmitCorrections()">Resubmit Corrections</button>
+                <button class="btn" id="btnExcel" style="background:#1f6e43; color:white" onclick="downloadExcel()">Export Excel</button>
+            </div>
+            
+            <div id="adminActions" style="display:none; gap:12px;">
+                <button class="btn btn-kick" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Sent Back')">Kickback</button>
+                <button class="btn btn-ready" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve for Payment</button>
+            </div>
+
+            <div class="grand-total-box">
+                <div>Total Hours: <span id="totalHoursDisplay">0.00</span></div>
+                <div>Total: <span id="grandTotalDisplay">$0.00</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         DATA VAULT VIEW
+         ===================================================== -->
+    <div id="dataVaultView">
+
+        <div class="vault-header">
+            <div>
+                <h1>📊 Data Vault</h1>
+                <p>Financial intelligence &amp; reporting for the selected time period</p>
+            </div>
+            <button class="btn btn-nav-grey" onclick="closeDataVault()">← Back to Dashboard</button>
+        </div>
+
+        <!-- TIME PERIOD TOGGLE -->
+        <div class="period-controls">
+            <label>View Period:</label>
+            <div class="period-toggle-group">
+                <button class="period-btn" id="periodBtnMonth" onclick="setPeriodMode('month')">Month</button>
+                <button class="period-btn" id="periodBtnQuarter" onclick="setPeriodMode('quarter')">Quarter</button>
+                <button class="period-btn active" id="periodBtnYear" onclick="setPeriodMode('year')">Year (YTD)</button>
+            </div>
+            <div class="period-selectors" id="monthSelector" style="display:none;">
+                <select id="vaultMonthSelect">
+                    <option value="0">January</option><option value="1">February</option>
+                    <option value="2">March</option><option value="3">April</option>
+                    <option value="4">May</option><option value="5">June</option>
+                    <option value="6">July</option><option value="7">August</option>
+                    <option value="8">September</option><option value="9">October</option>
+                    <option value="10">November</option><option value="11">December</option>
+                </select>
+            </div>
+            <div class="period-selectors" id="quarterSelector" style="display:none;">
+                <select id="vaultQuarterSelect">
+                    <option value="1">Q1 (Jan–Mar)</option>
+                    <option value="2">Q2 (Apr–Jun)</option>
+                    <option value="3">Q3 (Jul–Sep)</option>
+                    <option value="4">Q4 (Oct–Dec)</option>
+                </select>
+            </div>
+            <div class="period-selectors">
+                <select id="vaultYearSelect"></select>
+            </div>
+            <button class="btn-load-vault" onclick="loadVaultData()">Load Report</button>
+        </div>
+
+        <div id="vaultContent">
+            <div class="vault-loading">Select a time period and click <strong>Load Report</strong> to begin.</div>
+        </div>
+
+    </div><!-- end #dataVaultView -->
+
+</div><!-- end .container -->
+
+<script>
+    /* --- CONFIG & DATABASE --- */
+    const SUPABASE_URL = 'https://cfliviopdogrljkxzuaa.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUserCode = "";
+    let isRegistrationMode = false;
+    let activeAdminInvoiceId = "";
+    let currentInvoiceDate = new Date(2026, 3); 
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+    // Vault state
+    let vaultPeriodMode = 'year'; // 'month' | 'quarter' | 'year'
+    let vaultData = []; // cached raw invoice records for current vault query
+    let ledgerSortCol = null;
+    let ledgerSortDir = 1;
+
+    window.onload = function() {
+        document.getElementById('todayDateDisplay').innerText = new Date().toLocaleDateString();
+        
+        // Populate year selectors
+        const currentYear = new Date().getFullYear();
+        ['vaultYearSelect'].forEach(function(selId) {
+            const sel = document.getElementById(selId);
+            for (let y = currentYear; y >= currentYear - 5; y--) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.text = y;
+                if (y === currentYear) opt.selected = true;
+                sel.appendChild(opt);
+            }
+        });
+
+        // Pre-select current month / quarter in vault
+        const now = new Date();
+        document.getElementById('vaultMonthSelect').value = now.getMonth();
+        const q = Math.ceil((now.getMonth() + 1) / 3);
+        document.getElementById('vaultQuarterSelect').value = q;
+    };
+
+    /* --- AUTHENTICATION --- */
+    let isForgotKeyMode = false;
+    let recoveredKey = "";
+
+    function toggleNewUserFields() {
+        isRegistrationMode = !isRegistrationMode;
+        if (isRegistrationMode) {
+            // Close forgot key if open
+            isForgotKeyMode = false;
+            document.getElementById('forgotKeyFields').style.display = "none";
+            document.getElementById('profileFields').style.display = "block";
+            document.querySelectorAll('.new-user-toggle')[0].innerText = "Cancel Registration";
+        } else {
+            document.getElementById('profileFields').style.display = "none";
+            document.querySelectorAll('.new-user-toggle')[0].innerText = "New User";
+        }
+    }
+
+    function toggleForgotKey() {
+        isForgotKeyMode = !isForgotKeyMode;
+        const forgotDiv = document.getElementById('forgotKeyFields');
+        const forgotLink = document.querySelectorAll('.new-user-toggle')[1];
+        if (isForgotKeyMode) {
+            // Close new user if open
+            isRegistrationMode = false;
+            document.getElementById('profileFields').style.display = "none";
+            document.querySelectorAll('.new-user-toggle')[0].innerText = "New User";
+            forgotDiv.style.display = "block";
+            forgotLink.innerText = "Cancel Recovery";
+            // Reset result area
+            document.getElementById('keyResult').style.display = "none";
+            document.getElementById('recoverPayee').value = "";
+            document.getElementById('recoverZip').value = "";
+            recoveredKey = "";
+        } else {
+            forgotDiv.style.display = "none";
+            forgotLink.innerText = "Forgot My Key";
+        }
+    }
+
+    async function lookupKey() {
+        const nameInput = document.getElementById('recoverPayee').value.trim();
+        const zipInput = document.getElementById('recoverZip').value.trim();
+        const resultDiv = document.getElementById('keyResult');
+        const msgDiv = document.getElementById('keyResultMsg');
+        const keyDiv = document.getElementById('revealedKey');
+        const useBtn = document.getElementById('btnUseKey');
+
+        if (!nameInput || !zipInput) {
+            resultDiv.className = "not-found";
+            resultDiv.style.display = "block";
+            msgDiv.innerText = "Please enter both your name and zip code.";
+            keyDiv.innerText = "";
+            useBtn.style.display = "none";
+            return;
+        }
+
+        // Search for any invoice where payee matches (case-insensitive) and address3 contains the zip
+        const { data, error } = await supabaseClient
+            .from('invoices')
+            .select('payee, user_code, address3')
+            .ilike('payee', '%' + nameInput + '%');
+
+        resultDiv.style.display = "block";
+
+        if (data && data.length > 0) {
+            // Filter client-side for zip match within address3
+            const match = data.find(function(inv) {
+                return inv.address3 && inv.address3.includes(zipInput);
+            });
+
+            if (match) {
+                recoveredKey = match.user_code;
+                resultDiv.className = "found";
+                msgDiv.innerText = "✓ Account found for " + match.payee;
+                keyDiv.innerText = match.user_code;
+                useBtn.style.display = "block";
+            } else {
+                recoveredKey = "";
+                resultDiv.className = "not-found";
+                msgDiv.innerText = "No account matched that name and zip code. Please check your spelling.";
+                keyDiv.innerText = "";
+                useBtn.style.display = "none";
+            }
+        } else {
+            recoveredKey = "";
+            resultDiv.className = "not-found";
+            msgDiv.innerText = "No account found with that name. Please check your spelling.";
+            keyDiv.innerText = "";
+            useBtn.style.display = "none";
+        }
+    }
+
+    function useRecoveredKey() {
+        if (!recoveredKey) return;
+        document.getElementById('accessCode').value = recoveredKey;
+        // Close the forgot key panel
+        isForgotKeyMode = false;
+        document.getElementById('forgotKeyFields').style.display = "none";
+        document.querySelectorAll('.new-user-toggle')[1].innerText = "Forgot My Key";
+    }
+
+    async function handleLogin() {
+        const code = document.getElementById('accessCode').value.trim();
+        if (!code) return;
+        currentUserCode = code;
+
+        if (code.toUpperCase() === "FINANCE2026") {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
+            document.getElementById('btnUserAssistance').style.display = "block";
+            document.getElementById('btnDataVault').style.display = "block";
+            loadFinanceView();
+            return;
+        }
+
+        if (isRegistrationMode) {
+            setupLawyerUI();
+            return;
+        }
+
+        const { data } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('user_code', code);
+        
+        if (data && data.length > 0) {
+            document.getElementById('loginOverlay').style.display = "none";
+            document.getElementById('masterTopBar').style.display = "flex";
+            document.getElementById('btnUserAssistance').style.display = "none";
+            document.getElementById('btnDataVault').style.display = "none";
+            document.getElementById('invoiceView').style.display = "block";
+            
+            const kicked = data.find(function(inv) { return inv.status === 'Sent Back'; });
+            if (kicked) {
+                const monthInfo = kicked.month_year.split('_')[0];
+                const yearInfo = kicked.month_year.split('_')[1];
+                alert("Notice: Your invoice for " + monthInfo + " " + yearInfo + " has been sent back for corrections.");
+                currentInvoiceDate = new Date(parseInt(yearInfo), months.indexOf(monthInfo));
+            }
+            
+            renderMonthLabel();
+            loadUserData();
+        } else {
+            alert("Access Key not found. Please click 'New User' to register.");
+        }
+    }
+
+    function setupLawyerUI() {
+        document.getElementById('payeeName').value = document.getElementById('setupPayee').value;
+        document.getElementById('firmName').value = document.getElementById('setupFirm').value;
+        document.getElementById('address1').value = document.getElementById('setupAddress1').value;
+        document.getElementById('address2').value = document.getElementById('setupAddress2').value;
+        document.getElementById('address3').value = document.getElementById('setupAddress3').value;
+        document.getElementById('loginOverlay').style.display = "none";
+        document.getElementById('masterTopBar').style.display = "flex";
+        document.getElementById('btnUserAssistance').style.display = "none";
+        document.getElementById('btnDataVault').style.display = "none";
+        document.getElementById('invoiceView').style.display = "block";
+        renderMonthLabel();
+        calculateInvoices();
+    }
+
+    /* --- USER ASSISTANCE --- */
+    function openAssistance() {
+        document.getElementById('assistanceOverlay').style.display = "block";
+        document.getElementById('assistanceModal').style.display = "block";
+    }
+
+    function closeAssistance() {
+        document.getElementById('assistanceOverlay').style.display = "none";
+        document.getElementById('assistanceModal').style.display = "none";
+        document.getElementById('helpSearchInput').value = "";
+        document.getElementById('helpResultsList').innerHTML = "";
+    }
+
+    async function searchUsersForHelp() {
+        const query = document.getElementById('helpSearchInput').value.trim();
+        if (query.length < 2) { document.getElementById('helpResultsList').innerHTML = ""; return; }
+
+        const { data } = await supabaseClient
+            .from('invoices')
+            .select('payee, user_code, firm, month_year')
+            .or(`payee.ilike.%${query}%,user_code.ilike.%${query}%`);
+
+        const resultsDiv = document.getElementById('helpResultsList');
+        resultsDiv.innerHTML = "";
+
+        if (data && data.length > 0) {
+            const uniqueLawyers = [...new Map(data.map(item => [item['user_code'], item])).values()];
+            uniqueLawyers.forEach(function(lawyer) {
+                const item = document.createElement('div');
+                item.className = "result-item";
+                item.innerHTML = `
+                    <strong>${lawyer.payee}</strong><br>
+                    <span style="color:#007bff; font-weight:bold;">KEY: ${lawyer.user_code}</span><br>
+                    <small>${lawyer.firm || 'No firm listed'}</small>
+                `;
+                item.onclick = function() {
+                    if (confirm("Open invoice records for " + lawyer.payee + "?")) {
+                        closeAssistance();
+                        openInvoiceForReview(lawyer.month_year);
+                    }
+                };
+                resultsDiv.appendChild(item);
+            });
+        } else {
+            resultsDiv.innerHTML = "<p style='text-align:center; color:#999;'>No results found.</p>";
+        }
+    }
+
+    /* --- MONTH CONTROL --- */
+    function renderMonthLabel() { 
+        const labelText = months[currentInvoiceDate.getMonth()] + " " + currentInvoiceDate.getFullYear();
+        document.getElementById('currentMonthDisplay').innerText = labelText;
+        document.getElementById('adminMonthDisplay').innerText = labelText;
+    }
+
+    async function changeActiveMonth(delta) {
+        if (document.getElementById('invoiceView').style.display === "block" && !activeAdminInvoiceId) {
+            await syncInvoiceData(false);
+        }
+        document.getElementById('invoiceContainer').innerHTML = "";
+        currentInvoiceDate.setMonth(currentInvoiceDate.getMonth() + delta);
+        renderMonthLabel();
+
+        if (document.getElementById('masterDashboard').style.display === "block") {
+            loadFinanceView();
+        } else {
+            loadUserData();
+        }
+    }
+
+    /* --- FINANCE DASHBOARD --- */
+    async function loadFinanceView() {
+        document.getElementById('masterDashboard').style.display = "block";
+        document.getElementById('invoiceView').style.display = "none";
+        document.getElementById('dataVaultView').style.display = "none";
+
+        const prefix = months[currentInvoiceDate.getMonth()] + "_" + currentInvoiceDate.getFullYear();
+
+        const { data } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .like('month_year', prefix + "%")
+            .eq('submitted', true)
+            .order('updated_at', { ascending: false });
+        
+        const pendingList = document.getElementById('pendingList');
+        const readyList = document.getElementById('readyList');
+        const paidList = document.getElementById('paidList');
+        pendingList.innerHTML = ""; readyList.innerHTML = ""; paidList.innerHTML = "";
+
+        data.forEach(function(inv) {
+            const totalDue = calcInvoiceTotal(inv);
+            let statusActionHTML = "";
+            if (inv.status === 'Ready for Payment') {
+                statusActionHTML = `<button class="btn btn-paid" onclick="updateInvoiceStatus('${inv.month_year}', 'Paid')">Confirm Paid</button>`;
+            } else {
+                statusActionHTML = inv.status;
+            }
+
+            const rowHTML = `
+                <tr class="invoice-row">
+                    <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
+                    <td>${new Date(inv.updated_at).toLocaleDateString()}</td>
+                    <td>$${totalDue.toFixed(2)}</td>
+                    <td class="status-cell">${statusActionHTML}</td>
+                </tr>`;
+            
+            if (inv.status === 'Paid') {
+                paidList.innerHTML += rowHTML;
+            } else if (inv.status === 'Ready for Payment') {
+                readyList.innerHTML += rowHTML;
+            } else {
+                pendingList.innerHTML += rowHTML;
+            }
+        });
+    }
+
+    async function updateInvoiceStatus(id, newStatus) {
+        await supabaseClient.from('invoices').update({ status: newStatus }).eq('month_year', id);
+        loadFinanceView(); 
+    }
+
+    function navigateBackToDashboard() {
+        activeAdminInvoiceId = "";
+        document.getElementById('invoiceView').style.display = "none";
+        document.getElementById('backBtn').style.display = "none";
+        loadFinanceView();
+    }
+
+    /* =====================================================
+       DATA VAULT
+       ===================================================== */
+
+    function openDataVault() {
+        document.getElementById('masterDashboard').style.display = "none";
+        document.getElementById('invoiceView').style.display = "none";
+        document.getElementById('dataVaultView').style.display = "block";
+    }
+
+    function closeDataVault() {
+        document.getElementById('dataVaultView').style.display = "none";
+        loadFinanceView();
+    }
+
+    function setPeriodMode(mode) {
+        vaultPeriodMode = mode;
+        document.getElementById('periodBtnMonth').classList.toggle('active', mode === 'month');
+        document.getElementById('periodBtnQuarter').classList.toggle('active', mode === 'quarter');
+        document.getElementById('periodBtnYear').classList.toggle('active', mode === 'year');
+        document.getElementById('monthSelector').style.display = (mode === 'month') ? 'flex' : 'none';
+        document.getElementById('quarterSelector').style.display = (mode === 'quarter') ? 'flex' : 'none';
+    }
+
+    // Returns array of month prefixes to query based on selected period
+    function getMonthPrefixes() {
+        const year = parseInt(document.getElementById('vaultYearSelect').value);
+        const prefixes = [];
+
+        if (vaultPeriodMode === 'month') {
+            const m = parseInt(document.getElementById('vaultMonthSelect').value);
+            prefixes.push(months[m] + "_" + year);
+        } else if (vaultPeriodMode === 'quarter') {
+            const q = parseInt(document.getElementById('vaultQuarterSelect').value);
+            const startMonth = (q - 1) * 3;
+            for (let i = 0; i < 3; i++) prefixes.push(months[startMonth + i] + "_" + year);
+        } else {
+            // Year — all 12 months up to current month if same year
+            const currentYear = new Date().getFullYear();
+            const endMonth = (year === currentYear) ? new Date().getMonth() : 11;
+            for (let i = 0; i <= endMonth; i++) prefixes.push(months[i] + "_" + year);
+        }
+
+        return prefixes;
+    }
+
+    function getPeriodLabel() {
+        const year = document.getElementById('vaultYearSelect').value;
+        if (vaultPeriodMode === 'month') {
+            const m = parseInt(document.getElementById('vaultMonthSelect').value);
+            return months[m] + " " + year;
+        } else if (vaultPeriodMode === 'quarter') {
+            const q = document.getElementById('vaultQuarterSelect').value;
+            return "Q" + q + " " + year;
+        } else {
+            return "Year-to-Date " + year;
+        }
+    }
+
+    async function loadVaultData() {
+        const contentDiv = document.getElementById('vaultContent');
+        contentDiv.innerHTML = '<div class="vault-loading">⏳ Loading financial data...</div>';
+
+        const prefixes = getMonthPrefixes();
+
+        // Build OR filter for all month prefixes
+        const orClauses = prefixes.map(function(p) { return 'month_year.like.' + p + '%'; }).join(',');
+
+        const { data, error } = await supabaseClient
+            .from('invoices')
+            .select('*')
+            .or(orClauses)
+            .eq('submitted', true);
+
+        if (error || !data) {
+            contentDiv.innerHTML = '<div class="vault-loading" style="color:#e74c3c;">Error loading data. Please try again.</div>';
+            return;
+        }
+
+        vaultData = data;
+        renderVault(data);
+    }
+
+    function calcInvoiceTotal(inv) {
+        let total = 0;
+        if (inv.sections) {
+            inv.sections.forEach(function(sec) {
+                const rate = parseFloat(sec.rate) || 0;
+                if (sec.rows) {
+                    sec.rows.forEach(function(row) {
+                        total += (parseFloat(row.time) || 0) * rate;
+                    });
+                }
+            });
+        }
+        return total;
+    }
+
+    function calcInvoiceHours(inv) {
+        let hrs = 0;
+        if (inv.sections) {
+            inv.sections.forEach(function(sec) {
+                if (sec.rows) {
+                    sec.rows.forEach(function(row) {
+                        hrs += parseFloat(row.time) || 0;
+                    });
+                }
+            });
+        }
+        return hrs;
+    }
+
+    function renderVault(data) {
+        const label = getPeriodLabel();
+        const contentDiv = document.getElementById('vaultContent');
+
+        // ── 1. COMPUTE KPIs ──
+        let pendingLiability = 0, approvedPayout = 0, totalPaid = 0;
+
+        data.forEach(function(inv) {
+            const amt = calcInvoiceTotal(inv);
+            if (inv.status === 'Paid') {
+                totalPaid += amt;
+            } else if (inv.status === 'Ready for Payment') {
+                approvedPayout += amt;
+            } else {
+                // Pending, Sent Back, Corrected, Draft
+                pendingLiability += amt;
+            }
+        });
+
+        // ── 2. SPEND BY CATEGORY ──
+        const categories = ['Defender', 'Paralegal Services', 'Expenses', 'Training', 'MCLAP General'];
+        const catTotals = {};
+        const catHours = {};
+        categories.forEach(function(c) { catTotals[c] = 0; catHours[c] = 0; });
+
+        data.forEach(function(inv) {
+            if (inv.sections) {
+                inv.sections.forEach(function(sec) {
+                    const rate = parseFloat(sec.rate) || 0;
+                    const catKey = sec.category;
+                    if (!catTotals[catKey]) { catTotals[catKey] = 0; catHours[catKey] = 0; }
+                    if (sec.rows) {
+                        sec.rows.forEach(function(row) {
+                            const hrs = parseFloat(row.time) || 0;
+                            catTotals[catKey] += hrs * rate;
+                            catHours[catKey] += hrs;
+                        });
+                    }
+                });
+            }
+        });
+
+        const maxCatVal = Math.max(...Object.values(catTotals), 1);
+
+        // ── 3. PAYEE LEDGER ──
+        const payeeMap = {};
+        data.forEach(function(inv) {
+            const key = inv.user_code;
+            if (!payeeMap[key]) {
+                payeeMap[key] = {
+                    payee: inv.payee || 'Unknown',
+                    monthYear: inv.month_year,
+                    total: 0,
+                    hours: 0,
+                    status: inv.status
+                };
+            }
+            payeeMap[key].total += calcInvoiceTotal(inv);
+            payeeMap[key].hours += calcInvoiceHours(inv);
+        });
+
+        let payeeRows = Object.values(payeeMap);
+
+        // Sort
+        if (ledgerSortCol) {
+            payeeRows.sort(function(a, b) {
+                let av = a[ledgerSortCol], bv = b[ledgerSortCol];
+                if (typeof av === 'string') av = av.toLowerCase();
+                if (typeof bv === 'string') bv = bv.toLowerCase();
+                return (av > bv ? 1 : av < bv ? -1 : 0) * ledgerSortDir;
+            });
+        }
+
+        // Build status pill
+        function pillForStatus(status) {
+            const map = {
+                'Paid': 'pill-paid',
+                'Ready for Payment': 'pill-approved',
+                'Pending': 'pill-pending',
+                'Draft': 'pill-draft',
+                'Corrected': 'pill-corrected',
+                'Sent Back': 'pill-sentback'
+            };
+            const cls = map[status] || 'pill-draft';
+            return `<span class="status-pill ${cls}">${status}</span>`;
+        }
+
+        function sortIcon(col) {
+            if (ledgerSortCol !== col) return '<span class="sort-icon">⇅</span>';
+            return '<span class="sort-icon">' + (ledgerSortDir === 1 ? '↑' : '↓') + '</span>';
+        }
+
+        // ── RENDER ──
+        contentDiv.innerHTML = `
+
+            <!-- KPI CARDS -->
+            <div class="kpi-grid">
+                <div class="kpi-card pending">
+                    <div class="kpi-label">Total Pending Liability</div>
+                    <div class="kpi-value">$${pendingLiability.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                    <div class="kpi-sub">Pending + Sent Back invoices</div>
+                </div>
+                <div class="kpi-card approved">
+                    <div class="kpi-label">Approved for Payout</div>
+                    <div class="kpi-value">$${approvedPayout.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                    <div class="kpi-sub">Ready for Payment — checks needed</div>
+                </div>
+                <div class="kpi-card paid">
+                    <div class="kpi-label">Total Paid Out</div>
+                    <div class="kpi-value">$${totalPaid.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                    <div class="kpi-sub">Confirmed paid — ${label}</div>
+                </div>
+            </div>
+
+            <!-- SPEND BY CATEGORY -->
+            <div class="vault-section">
+                <div class="vault-section-header">
+                    <h3>Spend by Billing Category</h3>
+                    <span class="section-meta">${label}</span>
+                </div>
+                <div class="vault-section-body">
+                    <div class="category-breakdown">
+                        ${categories.map(function(cat) {
+                            const amt = catTotals[cat] || 0;
+                            const hrs = catHours[cat] || 0;
+                            const pct = maxCatVal > 0 ? (amt / maxCatVal * 100) : 0;
+                            return `
+                                <div class="cat-card">
+                                    <div class="cat-name">${cat}</div>
+                                    <div class="cat-amt">$${amt.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+                                    <div class="cat-hrs">${hrs.toFixed(2)} hrs</div>
+                                    <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>
+                                </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAYEE LEDGER -->
+            <div class="vault-section">
+                <div class="vault-section-header">
+                    <h3>Payee Summary — Vendor Ledger</h3>
+                    <span class="section-meta">${payeeRows.length} payee(s) — click column headers to sort</span>
+                </div>
+                <div class="vault-section-body" style="padding:0;">
+                    <table class="ledger-table">
+                        <thead>
+                            <tr>
+                                <th onclick="sortLedger('payee')" class="${ledgerSortCol==='payee'?'sorted':''}">Payee Name ${sortIcon('payee')}</th>
+                                <th onclick="sortLedger('hours')" class="${ledgerSortCol==='hours'?'sorted':''}">Total Hours ${sortIcon('hours')}</th>
+                                <th onclick="sortLedger('total')" class="${ledgerSortCol==='total'?'sorted':''}">Amount Submitted ${sortIcon('total')}</th>
+                                <th>Status</th>
+                                <th>Invoice</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${payeeRows.length === 0 ? `<tr><td colspan="5" style="text-align:center; padding:30px; color:#aaa;">No data for this period.</td></tr>` :
+                            payeeRows.map(function(p) {
+                                return `
+                                    <tr>
+                                        <td class="payee-name-cell">${p.payee}</td>
+                                        <td>${p.hours.toFixed(2)}</td>
+                                        <td><strong>$${p.total.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></td>
+                                        <td><div class="status-pills">${pillForStatus(p.status)}</div></td>
+                                        <td><button class="btn-jump-invoice" onclick="jumpToInvoice('${p.monthYear}')">View →</button></td>
+                                    </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MASTER EXPORT -->
+            <div class="vault-section">
+                <div class="vault-section-header">
+                    <h3>Global Export Tool</h3>
+                    <span class="section-meta">Flat-file export for QuickBooks &amp; accounting software</span>
+                </div>
+                <div class="vault-section-body">
+                    <div class="export-row">
+                        <div class="export-description">
+                            Exports all invoice line items for <strong>${label}</strong> into a single flat Excel sheet.
+                            Columns: Month, Payee, Category, Description, Date, Hours, Rate, Amount, Status.
+                        </div>
+                        <button class="btn-master-export" onclick="masterExport()">
+                            ⬇ Master Export — ${label}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        `;
+    }
+
+    function sortLedger(col) {
+        if (ledgerSortCol === col) {
+            ledgerSortDir = ledgerSortDir * -1;
+        } else {
+            ledgerSortCol = col;
+            ledgerSortDir = 1;
+        }
+        renderVault(vaultData);
+    }
+
+    function jumpToInvoice(monthYear) {
+        closeDataVault();
+        openInvoiceForReview(monthYear);
+    }
+
+    function masterExport() {
+        if (!vaultData || vaultData.length === 0) {
+            alert("No data loaded. Please click Load Report first.");
+            return;
+        }
+
+        const label = getPeriodLabel();
+        const headers = ["Month", "Payee", "Firm", "Category", "Person", "Date", "Description", "Hours", "Rate", "Amount", "Invoice Status"];
+        const rows = [headers];
+
+        vaultData.forEach(function(inv) {
+            const monthLabel = inv.month_year ? inv.month_year.split('_').slice(0, 2).join(' ') : '';
+            if (inv.sections) {
+                inv.sections.forEach(function(sec) {
+                    const rate = parseFloat(sec.rate) || 0;
+                    if (sec.rows) {
+                        sec.rows.forEach(function(row) {
+                            const hrs = parseFloat(row.time) || 0;
+                            rows.push([
+                                monthLabel,
+                                inv.payee || '',
+                                inv.firm || '',
+                                sec.category || '',
+                                sec.personName || '',
+                                row.date || '',
+                                row.desc || '',
+                                hrs,
+                                rate,
+                                parseFloat((hrs * rate).toFixed(2)),
+                                inv.status || ''
+                            ]);
+                        });
+                    }
+                });
+            }
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+
+        // Column widths
+        ws['!cols'] = [
+            {wch:14},{wch:22},{wch:22},{wch:18},{wch:18},
+            {wch:12},{wch:40},{wch:10},{wch:8},{wch:12},{wch:18}
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Master Export");
+        XLSX.writeFile(wb, "MasterExport_" + label.replace(/\s/g, '_') + ".xlsx");
+    }
+
+    /* =====================================================
+       INVOICE BUILDER (unchanged from original)
+       ===================================================== */
+
+    function createNewInvoiceSection(saved = null) {
+        const id = saved ? saved.id : Date.now();
+        const cat = saved ? saved.category : document.getElementById('categorySelector').value;
+        
+        const sectionDiv = document.createElement('div');
+        sectionDiv.id = "sec-" + id;
+        sectionDiv.style.marginBottom = "30px";
+
+        let nameHTML = "";
+        if (cat === "Defender" || cat === "Paralegal Services") {
+            const savedName = saved && saved.personName ? saved.personName : '';
+            nameHTML = `<input type="text" class="sec-name" value="${savedName}">`;
+        }
+
+        const savedRate = saved && saved.rate ? saved.rate : 0;
+
+        sectionDiv.innerHTML = `
+            <div class="section-bar">
+                <span>
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span> 
+                    ${cat} ${nameHTML}
+                </span>
+                <div>
+                    Rate: $<input type="number" class="rate-box" value="${savedRate}" oninput="calculateInvoices()"> 
+                    <button style="color:red; background:none; border:none; cursor:pointer;" onclick="deleteSection('${id}')">✕</button>
+                </div>
+            </div>
+            <div id="content-${id}">
+                <table class="grid-table">
+                    <thead>
+                        <tr>
+                            <th style="width:160px;">Date</th>
+                            <th>Description</th>
+                            <th style="width:100px;">Time</th>
+                            <th style="width:130px;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="body-${id}"></tbody>
+                    <tr style="background:#fff9c4; font-weight:bold;">
+                        <td colspan="2" style="text-align:right; padding:12px;">Subtotal</td>
+                        <td id="hrs-${id}" style="text-align:center;">0.00</td>
+                        <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
+                    </tr>
+                </table>
+                <div style="margin-top:10px;">
+                    <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
+                    <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
+                </div>
+            </div>`;
+
+        document.getElementById('invoiceContainer').appendChild(sectionDiv);
+        
+        if (saved && saved.rows) {
+            saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
+        } else {
+            addInvoiceRow(id);
+        }
+    }
+
+    function addInvoiceRow(sectionId, rowData = null) {
+        const tbody = document.getElementById("body-" + sectionId);
+        const row = document.createElement('tr');
+        row.className = "item-row";
+        
+        const dateValue = rowData && rowData.date ? rowData.date : '';
+        const descValue = rowData && rowData.desc ? rowData.desc : '';
+        const timeValue = rowData && rowData.time ? rowData.time : '';
+        
+        row.innerHTML = `
+            <td>
+                <input type="date" class="date-check" value="${dateValue}" onchange="calculateInvoices()">
+            </td>
+            <td>
+                <textarea class="desc-field" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${descValue}</textarea>
+            </td>
+            <td>
+                <input type="number" step="0.01" class="time-field" value="${timeValue}" onchange="calculateInvoices()">
+            </td>
+            <td class="row-amt" style="text-align:right; padding-right:15px;">$0.00</td>
+        `;
+        
+        tbody.appendChild(row);
+        calculateInvoices();
+    }
+
+    function removeLastRow(sectionId) {
+        const tbody = document.getElementById("body-" + sectionId);
+        if (tbody.rows.length > 0) {
+            tbody.deleteRow(-1);
+            calculateInvoices();
+        }
+    }
+
+    function toggleSectionBody(id) {
+        const content = document.getElementById("content-" + id);
+        content.style.display = (content.style.display === "none") ? "block" : "none";
+    }
+
+    function deleteSection(id) {
+        if (confirm("Delete section?")) {
+            document.getElementById("sec-" + id).remove();
+            calculateInvoices();
+        }
+    }
+
+    function calculateInvoices() {
+        let globalHrs = 0, globalVal = 0;
+        const currentMonth = currentInvoiceDate.getMonth();
+        const currentYear = currentInvoiceDate.getFullYear();
+
+        document.querySelectorAll('[id^="sec-"]').forEach(function(section) {
+            let sectionHrs = 0, sectionVal = 0;
+            const rate = parseFloat(section.querySelector('.rate-box').value) || 0;
+            
+            section.querySelectorAll('.item-row').forEach(function(row) {
+                const dateInput = row.querySelector('.date-check');
+                if (dateInput.value) {
+                    const enteredDate = new Date(dateInput.value + 'T00:00:00');
+                    if (enteredDate.getUTCMonth() !== currentMonth || enteredDate.getUTCFullYear() !== currentYear) {
+                        dateInput.classList.add('date-mismatch');
+                    } else {
+                        dateInput.classList.remove('date-mismatch');
+                    }
+                }
+
+                const timeInput = row.querySelector('.time-field');
+                let timeNum = parseFloat(timeInput.value) || 0;
+                if (timeNum > 0) {
+                    let hundredths = Math.round((timeNum * 100) % 10);
+                    timeNum = (hundredths >= 5) ? Math.ceil(timeNum * 10) / 10 : Math.floor(timeNum * 10) / 10;
+                    timeInput.value = timeNum.toFixed(2);
+                }
+
+                const lineAmt = timeNum * rate;
+                row.querySelector('.row-amt').innerText = "$" + lineAmt.toFixed(2);
+                sectionHrs += timeNum; sectionVal += lineAmt;
+            });
+
+            const sid = section.id.replace('sec-', '');
+            document.getElementById("hrs-" + sid).innerText = sectionHrs.toFixed(2);
+            document.getElementById("val-" + sid).innerText = "$" + sectionVal.toFixed(2);
+            globalHrs += sectionHrs; globalVal += sectionVal;
+        });
+
+        document.getElementById('totalHoursDisplay').innerText = globalHrs.toFixed(2);
+        document.getElementById('grandTotalDisplay').innerText = "$" + globalVal.toFixed(2);
+    }
+
+    /* --- DATA MANAGEMENT --- */
+    async function syncInvoiceData(final) {
+        const sectionsArray = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(sectionElement) {
+            const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0];
+            const personNameInput = sectionElement.querySelector('.sec-name');
+            const rateInput = sectionElement.querySelector('.rate-box');
+            const rowsArray = Array.from(sectionElement.querySelectorAll('.item-row')).map(function(rowElement) {
+                return {
+                    date: rowElement.cells[0].querySelector('input').value,
+                    desc: rowElement.cells[1].querySelector('textarea').value,
+                    time: rowElement.cells[2].querySelector('input').value
+                };
+            });
+            return {
+                id: sectionElement.id.replace('sec-', ''),
+                category: categoryText,
+                personName: personNameInput ? personNameInput.value : "",
+                rate: rateInput.value,
+                rows: rowsArray
+            };
+        });
+
+        const monthString = months[currentInvoiceDate.getMonth()];
+        const yearString = currentInvoiceDate.getFullYear();
+        const primaryKey = monthString + "_" + yearString + "_" + currentUserCode;
+
+        const payload = {
+            month_year: primaryKey,
+            user_code: currentUserCode,
+            payee: document.getElementById('payeeName').value,
+            firm: document.getElementById('firmName').value,
+            address1: document.getElementById('address1').value,
+            address2: document.getElementById('address2').value,
+            address3: document.getElementById('address3').value,
+            inv_num: document.getElementById('invNum').value,
+            sections: sectionsArray,
+            submitted: final,
+            status: final ? 'Pending' : 'Draft',
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabaseClient
+            .from('invoices')
+            .upsert(payload, { onConflict: 'month_year' });
+            
+        if (final && !error) alert("Submitted to Finance!");
+    }
+
+    async function resubmitCorrections() {
+        await syncInvoiceData(true);
+        const monthString = months[currentInvoiceDate.getMonth()];
+        const yearString = currentInvoiceDate.getFullYear();
+        const primaryKey = monthString + "_" + yearString + "_" + currentUserCode;
+        await supabaseClient.from('invoices').update({ status: 'Corrected' }).eq('month_year', primaryKey);
+        alert("Corrections Resubmitted!");
+        loadUserData();
+    }
+
+    async function loadUserData() {
+        const monthString = months[currentInvoiceDate.getMonth()];
+        const yearString = currentInvoiceDate.getFullYear();
+        const primaryKey = monthString + "_" + yearString + "_" + currentUserCode;
+        
+        const { data } = await supabaseClient
+            .from('invoices').select('*').eq('month_year', primaryKey).single();
+        
+        if (data) {
+            document.getElementById('payeeName').value = data.payee || "";
+            document.getElementById('firmName').value = data.firm || "";
+            document.getElementById('address1').value = data.address1 || "";
+            document.getElementById('address2').value = data.address2 || "";
+            document.getElementById('address3').value = data.address3 || "";
+            document.getElementById('invNum').value = data.inv_num || "";
+            document.getElementById('invoiceContainer').innerHTML = "";
+            data.sections.forEach(function(sectionData) { createNewInvoiceSection(sectionData); });
+            
+            if (data.status === 'Sent Back') {
+                document.getElementById('btnSync').style.display = "none";
+                document.getElementById('btnSubmit').style.display = "none";
+                document.getElementById('btnExcel').style.display = "none";
+                document.getElementById('btnResubmit').style.display = "block";
+            } else {
+                document.getElementById('btnSync').style.display = "block";
+                document.getElementById('btnSubmit').style.display = "block";
+                document.getElementById('btnExcel').style.display = "block";
+                document.getElementById('btnResubmit').style.display = "none";
+            }
+            calculateInvoices();
+        } else {
+            document.getElementById('invoiceContainer').innerHTML = "";
+            document.getElementById('btnSync').style.display = "block";
+            document.getElementById('btnSubmit').style.display = "block";
+            document.getElementById('btnExcel').style.display = "block";
+            document.getElementById('btnResubmit').style.display = "none";
+            calculateInvoices();
+        }
+    }
+
+    async function openInvoiceForReview(id) {
+        activeAdminInvoiceId = id;
+        document.getElementById('masterDashboard').style.display = "none";
+        document.getElementById('dataVaultView').style.display = "none";
+        document.getElementById('invoiceView').style.display = "block";
+        document.getElementById('backBtn').style.display = "block";
+        document.getElementById('userActions').style.display = "none";
+        document.getElementById('adminActions').style.display = "flex";
+        document.getElementById('sectionAdder').style.display = "none";
+        document.getElementById('userPrev').style.display = "none";
+        document.getElementById('userNext').style.display = "none";
+
+        const { data } = await supabaseClient
+            .from('invoices').select('*').eq('month_year', id).single();
+            
+        if (data) {
+            document.getElementById('payeeName').value = data.payee || "";
+            document.getElementById('firmName').value = data.firm || "";
+            document.getElementById('address1').value = data.address1 || "";
+            document.getElementById('address2').value = data.address2 || "";
+            document.getElementById('address3').value = data.address3 || "";
+            document.getElementById('invNum').value = data.inv_num || "";
+            document.getElementById('invoiceContainer').innerHTML = "";
+            data.sections.forEach(function(sectionData) { createNewInvoiceSection(sectionData); });
+            calculateInvoices();
+        }
+    }
+
+    function downloadExcel() {
+        let excelData = [
+            [document.getElementById('payeeName').value], 
+            [document.getElementById('firmName').value], 
+            [document.getElementById('address1').value], 
+            [document.getElementById('address2').value], 
+            [document.getElementById('address3').value],
+            [], 
+            ["Date:", new Date().toLocaleDateString()], 
+            ["Inv #:", document.getElementById('invNum').value], 
+            []
+        ];
+        
+        document.querySelectorAll('[id^="sec-"]').forEach(function(sectionElement) {
+            let headerText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '');
+            let rateValue = sectionElement.querySelector('.rate-box').value;
+            excelData.push([headerText.toUpperCase(), "", "", "Rate:", "$" + rateValue]);
+            excelData.push(["Date", "Desc", "Time", "Amount"]);
+            sectionElement.querySelectorAll('.item-row').forEach(function(rowElement) {
+                const dateVal = rowElement.cells[0].querySelector('input').value;
+                const descVal = rowElement.cells[1].querySelector('textarea').value;
+                const timeVal = rowElement.cells[2].querySelector('input').value;
+                const amountVal = rowElement.querySelector('.row-amt').innerText;
+                excelData.push([dateVal, descVal, timeVal, amountVal]);
+            });
+            const sectionIdNumber = sectionElement.id.replace('sec-', '');
+            excelData.push(["", "SUBTOTAL", document.getElementById("hrs-" + sectionIdNumber).innerText, document.getElementById("val-" + sectionIdNumber).innerText]);
+            excelData.push([]);
+        });
+        
+        excelData.push(["SUMMARY"]);
+        excelData.push(["Total Hours:", document.getElementById('totalHoursDisplay').innerText]);
+        excelData.push(["Grand Total:", document.getElementById('grandTotalDisplay').innerText]);
+        
+        const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice");
+        XLSX.writeFile(workbook, "Invoice_" + currentUserCode + ".xlsx");
+    }
+</script>
+</body>
+</html>
