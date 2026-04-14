@@ -915,7 +915,7 @@
         <div id="sectionAdder" style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px;">
             <strong>Add Billing Category:</strong>
             <select id="categorySelector" style="padding:8px; margin:0 10px;">
-                <option value="Defender">Defender</option>
+                <option value="Case Name">Case Name</option>
                 <option value="Paralegal Services">Paralegal Services</option>
                 <option value="Expenses">Expenses</option>
                 <option value="Training">Training</option>
@@ -1462,7 +1462,7 @@
         });
 
         // ── 2. SPEND BY CATEGORY ──
-        const categories = ['Defender', 'Paralegal Services', 'Expenses', 'Training', 'MCLAP General'];
+        const categories = ['Case Name', 'Paralegal Services', 'Expenses', 'Training', 'MCLAP General'];
         const catTotals = {};
         const catHours = {};
         categories.forEach(function(c) { catTotals[c] = 0; catHours[c] = 0; });
@@ -1715,7 +1715,7 @@
         sectionDiv.style.marginBottom = "30px";
 
         let nameHTML = "";
-        if (cat === "Defender" || cat === "Paralegal Services") {
+        if (cat === "Case Name" || cat === "Paralegal Services") {
             const savedName = saved && saved.personName ? saved.personName : '';
             nameHTML = `<input type="text" class="sec-name" value="${savedName}">`;
         }
@@ -1767,6 +1767,12 @@
                         <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
                     </tr>`}
                 </table>
+                ${cat === 'Expenses' ? `
+                <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;">
+                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label>
+                    <input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;">
+                    <span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>
+                </div>` : ''}
                 <div style="margin-top:10px;">
                     <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
@@ -1774,6 +1780,16 @@
             </div>`;
 
         document.getElementById('invoiceContainer').appendChild(sectionDiv);
+        // Wire up PDF file count display if Expenses
+        if (cat === 'Expenses') {
+            const pdfInput = document.getElementById('pdf-upload-' + id);
+            if (pdfInput) {
+                pdfInput.addEventListener('change', function() {
+                    const countEl = document.getElementById('pdf-count-' + id);
+                    if (countEl) countEl.innerText = this.files.length > 0 ? this.files.length + ' file(s) selected' : '';
+                });
+            }
+        }
         
         if (saved && saved.rows) {
             saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
@@ -1798,7 +1814,7 @@
             const perCostValue = rowData && rowData.perCost ? rowData.perCost : '';
             row.innerHTML = `
                 <td>
-                    <input type="date" class="date-check" value="${dateValue}" onchange="calculateInvoices()">
+                    <input type="date" class="date-check" value="${dateValue}" onchange="sortSectionByDate(this); calculateInvoices()">
                 </td>
                 <td>
                     <textarea class="desc-field" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${descValue}</textarea>
@@ -1825,7 +1841,7 @@
             const timeValue = rowData && rowData.time ? rowData.time : '';
             row.innerHTML = `
                 <td>
-                    <input type="date" class="date-check" value="${dateValue}" onchange="calculateInvoices()">
+                    <input type="date" class="date-check" value="${dateValue}" onchange="sortSectionByDate(this); calculateInvoices()">
                 </td>
                 <td>
                     <textarea class="desc-field" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${descValue}</textarea>
@@ -1861,7 +1877,31 @@
         }
     }
 
-    function calculateInvoices() {
+    function sortSectionByDate(inputEl) {
+            // Find the section containing this date input
+            const row = inputEl.closest('tr.item-row');
+            if (!row) return;
+            const tbody = row.closest('tbody');
+            if (!tbody) return;
+
+            // Collect all item rows
+            const rows = Array.from(tbody.querySelectorAll('tr.item-row'));
+            if (rows.length < 2) return;
+
+            // Sort rows by their date value (ascending)
+            rows.sort(function(a, b) {
+                const dateA = a.querySelector('.date-check') ? a.querySelector('.date-check').value : '';
+                const dateB = b.querySelector('.date-check') ? b.querySelector('.date-check').value : '';
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+                return dateA < dateB ? -1 : dateA > dateB ? 1 : 0;
+            });
+
+            // Re-append in sorted order (moves them in DOM without recreating)
+            rows.forEach(function(r) { tbody.appendChild(r); });
+        }
+
+        function calculateInvoices() {
         let globalHrs = 0, globalVal = 0;
         const currentMonth = currentInvoiceDate.getMonth();
         const currentYear = currentInvoiceDate.getFullYear();
