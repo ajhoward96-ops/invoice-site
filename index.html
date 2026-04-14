@@ -1380,7 +1380,18 @@
                 </tr>`;
             
             if (inv.status === 'Paid') {
-                paidList.innerHTML += rowHTML;
+                // Show remaining balance for paid archive
+                const paidBalance = typeof inv.balance_remaining === 'number' ? inv.balance_remaining : (inv.balance_remaining != null ? parseFloat(inv.balance_remaining) : totalDue);
+                const paidBalanceStr = '$' + paidBalance.toFixed(2);
+                const paidStatusLabel = paidBalance <= 0 ? '<span style="color:#27ae60;font-weight:700;">Paid in Full</span>' : '<span style="color:#e67e22;font-weight:700;">Partial — Balance: ' + paidBalanceStr + '</span>';
+                const paidRowHTML = `
+                <tr class="invoice-row">
+                    <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
+                    <td>${inv.submitted_at ? new Date(inv.submitted_at).toLocaleDateString() : new Date(inv.updated_at).toLocaleDateString()}</td>
+                    <td>${paidBalanceStr}</td>
+                    <td class="status-cell">${paidStatusLabel}</td>
+                </tr>`;
+                paidList.innerHTML += paidRowHTML;
             } else if (inv.status === 'Ready for Payment') {
                 readyList.innerHTML += rowHTML;
             } else {
@@ -1974,6 +1985,16 @@
             pdfInput.addEventListener('change', function() {
                 const countEl = document.getElementById('pdf-count-' + id);
                 if (countEl) countEl.innerText = this.files.length > 0 ? this.files.length + ' file(s) selected' : '';
+                // Store files as base64
+                const files = Array.from(this.files);
+                _sectionPdfs.set(id, []);
+                files.forEach(function(file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        _sectionPdfs.get(id).push({ name: file.name, data: e.target.result });
+                    };
+                    reader.readAsDataURL(file);
+                });
             });
         }
 
@@ -2072,6 +2093,16 @@
                     if (pdfInput) pdfInput.addEventListener('change', function() {
                         const countEl = document.getElementById('pdf-count-' + id);
                         if (countEl) countEl.innerText = this.files.length > 0 ? this.files.length + ' file(s) selected' : '';
+                        // Store files as base64
+                        const files = Array.from(this.files);
+                        _sectionPdfs.set(id, []);
+                        files.forEach(function(file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                _sectionPdfs.get(id).push({ name: file.name, data: e.target.result });
+                            };
+                            reader.readAsDataURL(file);
+                        });
                     });
                 }
             } else {
@@ -2274,7 +2305,8 @@
                 personName: caseNameSaved,        // backward compat
                 rate: rateInput ? rateInput.value : 0,
                 rows: rowsArray,
-                kickNote: (function() { const ta = sectionElement.querySelector('.kicknote-field'); return ta ? ta.value : ''; })()
+                kickNote: (function() { const ta = sectionElement.querySelector('.kicknote-field'); return ta ? ta.value : ''; })(),
+                pdfAttachments: _sectionPdfs.get(sectionElement.id.replace('sec-', '')) || []
             };
         });
 
@@ -2298,11 +2330,30 @@
             submitted_at: final ? new Date().toISOString() : undefined
         };
 
-        const { error } = await supabaseClient
-            .from('invoices')
-            .upsert(payload, { onConflict: 'month_year' });
-            
-        if (final && !error) alert("Submitted to Finance!");
+        try {
+            // Strip large base64 payloads if sections are too large (>500KB)
+            const payloadStr = JSON.stringify(payload);
+            let finalPayload = payload;
+            if (payloadStr.length > 500000) {
+                // Remove pdfAttachments from sections to keep payload size manageable
+                finalPayload = Object.assign({}, payload, {
+                    sections: (payload.sections || []).map(function(s) {
+                        return Object.assign({}, s, { pdfAttachments: [] });
+                    })
+                });
+            }
+            const { error } = await supabaseClient
+                .from('invoices')
+                .upsert(finalPayload, { onConflict: 'month_year' });
+
+            if (error) {
+                alert('Save failed: ' + error.message);
+            } else if (final) {
+                alert('Submitted to Finance! Your invoice is now pending review.');
+            }
+        } catch(e) {
+            alert('Error saving invoice: ' + e.message);
+        }
     }
 
     async function resubmitCorrections() {
@@ -2567,6 +2618,7 @@
 
 
     // ── PAYMENT MODAL ──────────────────────────────────────────────────────────
+    const _sectionPdfs = new Map(); // stores base64 PDF attachments per section id
     let _pmtInvoiceId = null;
     let _pmtTotalDue  = 0;
     let _pmtInvData   = null;
@@ -2844,6 +2896,22 @@
         // Save
         const fileName = 'Receipt_' + _invoiceId + '.pdf';
         doc.save(fileName);
+
+        // Download expense PDF attachments alongside receipt
+        (inv.sections || []).forEach(function(sec, si) {
+            if (sec.billingType === 'Expenses' && Array.isArray(sec.pdfAttachments) && sec.pdfAttachments.length > 0) {
+                sec.pdfAttachments.forEach(function(att, ai) {
+                    setTimeout(function() {
+                        const link = document.createElement('a');
+                        link.href = att.data;
+                        link.download = att.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }, (si * 10 + ai) * 600 + 800);
+                });
+            }
+        });
     }
 
 </script>
