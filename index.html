@@ -7,6 +7,7 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
     <style>
         /* --- GLOBAL STYLES --- */
@@ -1365,7 +1366,7 @@
             const totalDue = calcInvoiceTotal(inv);
             let statusActionHTML = "";
             if (inv.status === 'Ready for Payment') {
-                statusActionHTML = `<button class="btn btn-paid" onclick="updateInvoiceStatus('${inv.month_year}', 'Paid')">Confirm Paid</button>`;
+                statusActionHTML = `<button class="btn btn-paid" onclick="openPaymentModal('${inv.month_year}', ${totalDue})">Confirm Payment</button>`;
             } else {
                 statusActionHTML = inv.status;
             }
@@ -1542,9 +1543,14 @@
         if (inv.sections) {
             inv.sections.forEach(function(sec) {
                 const rate = parseFloat(sec.rate) || 0;
+                const isExp = sec.billingType === 'Expenses' || sec.category === 'Expenses';
                 if (sec.rows) {
                     sec.rows.forEach(function(row) {
-                        total += (parseFloat(row.time) || 0) * rate;
+                        if (isExp) {
+                            total += (parseFloat(row.units) || 0) * (parseFloat(row.perCost) || 0);
+                        } else {
+                            total += (parseFloat(row.time) || 0) * rate;
+                        }
                     });
                 }
             });
@@ -2557,6 +2563,326 @@
             }
         });
 
+
+
+    // ── PAYMENT MODAL ──────────────────────────────────────────────────────────
+    let _pmtInvoiceId = null;
+    let _pmtTotalDue  = 0;
+    let _pmtInvData   = null;
+
+    async function openPaymentModal(invoiceId, totalDue) {
+        _pmtInvoiceId = invoiceId;
+        _pmtTotalDue  = totalDue;
+
+        // Fetch full invoice for receipt generation
+        const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', invoiceId).single();
+        _pmtInvData = data;
+
+        const modal = document.getElementById('paymentModal');
+        document.getElementById('pmtPayee').innerText       = data ? (data.payee || invoiceId) : invoiceId;
+        document.getElementById('pmtInvoiceId').innerText   = invoiceId;
+        document.getElementById('pmtTotalDue').innerText    = '$' + totalDue.toFixed(2);
+        document.getElementById('pmtAmountInput').value     = totalDue.toFixed(2);
+        updatePaymentBalance();
+        modal.style.display = 'flex';
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').style.display = 'none';
+        _pmtInvoiceId = null; _pmtTotalDue = 0; _pmtInvData = null;
+    }
+
+    function updatePaymentBalance() {
+        const paid    = parseFloat(document.getElementById('pmtAmountInput').value) || 0;
+        const remaining = Math.max(0, _pmtTotalDue - paid);
+        document.getElementById('pmtAmountDisplay').innerText = '$' + paid.toFixed(2);
+        const remEl = document.getElementById('pmtRemaining');
+        remEl.innerText = '$' + remaining.toFixed(2);
+        remEl.style.color = remaining > 0 ? '#e74c3c' : '#27ae60';
+    }
+
+    async function confirmPayment() {
+        if (!_pmtInvoiceId) return;
+        const paid      = parseFloat(document.getElementById('pmtAmountInput').value) || 0;
+        const remaining = Math.max(0, _pmtTotalDue - paid);
+
+        // Update Supabase
+        await supabaseClient.from('invoices').update({
+            status: 'Paid',
+            amount_paid: paid,
+            balance_remaining: remaining,
+            paid_at: new Date().toISOString()
+        }).eq('month_year', _pmtInvoiceId);
+
+        // Generate PDF receipt
+        if (_pmtInvData) generateReceiptPDF(_pmtInvData, paid, remaining);
+
+        closePaymentModal();
+        loadFinanceView();
+    }
+
+    // ── PDF RECEIPT GENERATOR ──────────────────────────────────────────────────
+    function generateReceiptPDF(inv, amountPaid, remaining) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+
+        const PW = doc.internal.pageSize.getWidth();
+        const PH = doc.internal.pageSize.getHeight();
+        const L  = 50, R = PW - 50;
+        const COL_W = R - L;
+        let y = 50;
+
+        // ── helpers ──
+        function addPage() {
+            doc.addPage();
+            y = 50;
+            drawPageHeader();
+        }
+        function checkY(needed) { if (y + needed > PH - 60) addPage(); }
+        function fmtMoney(n) { return '$' + (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+        function hline(yy, color) {
+            doc.setDrawColor(color || '#cccccc');
+            doc.setLineWidth(0.5);
+            doc.line(L, yy, R, yy);
+        }
+
+        function drawPageHeader() {
+            // Dark header bar
+            doc.setFillColor(44, 62, 80);
+            doc.rect(0, 0, PW, 36, 'F');
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(13);
+            doc.setTextColor(255,255,255);
+            doc.text('PAYMENT RECEIPT', PW/2, 23, { align:'center' });
+            doc.setFontSize(9);
+            doc.setTextColor(180,200,220);
+            doc.text('Legal Invoice Portal', PW/2, 33, { align:'center' });
+        }
+
+        // ── PAGE 1 HEADER ──
+        drawPageHeader();
+        y = 60;
+
+        // Org/Payee info block
+        doc.setFillColor(248, 249, 250);
+        doc.roundedRect(L, y, COL_W, 90, 4, 4, 'F');
+        doc.setDrawColor(220,220,220);
+        doc.roundedRect(L, y, COL_W, 90, 4, 4, 'S');
+
+        doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(44,62,80);
+        doc.text(inv.payee || 'Payee', L+14, y+20);
+
+        doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(80,80,80);
+        let infoY = y+34;
+        if (inv.firm)     { doc.text(inv.firm,     L+14, infoY); infoY+=13; }
+        if (inv.address1) { doc.text(inv.address1, L+14, infoY); infoY+=13; }
+        if (inv.address2) { doc.text(inv.address2, L+14, infoY); infoY+=13; }
+        if (inv.address3) { doc.text(inv.address3, L+14, infoY); }
+
+        // Receipt meta (right column)
+        const rx = PW - 220;
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(44,62,80);
+        doc.text('Invoice ID:',    rx, y+20); doc.setFont('helvetica','normal'); doc.text(inv.month_year || '', rx+75, y+20);
+        doc.setFont('helvetica','bold');
+        doc.text('Invoice #:',     rx, y+33); doc.setFont('helvetica','normal'); doc.text(inv.inv_num || '—', rx+75, y+33);
+        doc.setFont('helvetica','bold');
+        doc.text('Date Paid:',     rx, y+46); doc.setFont('helvetica','normal'); doc.text(new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), rx+75, y+46);
+        doc.setFont('helvetica','bold');
+        doc.text('Status:',        rx, y+59); 
+        doc.setTextColor(39,174,96); doc.setFont('helvetica','bold'); doc.text('PAID', rx+75, y+59);
+
+        y += 106;
+
+        // ── SECTIONS ──
+        const sections = inv.sections || [];
+        sections.forEach(function(sec, secIdx) {
+            const isExp  = sec.billingType === 'Expenses' || sec.category === 'Expenses';
+            const secRate = parseFloat(sec.rate) || 0;
+            const secLabel = isExp ? 'Expenses' : (sec.serviceType || sec.serviceOwner || sec.category || 'Service');
+            const caseLbl  = sec.caseName || sec.personName || '';
+
+            checkY(40);
+
+            // Section header bar
+            doc.setFillColor(44, 62, 80);
+            doc.rect(L, y, COL_W, 22, 'F');
+            doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(255,255,255);
+            const secTitle = secLabel + (caseLbl ? '  |  Case: ' + caseLbl : '');
+            doc.text(secTitle, L+10, y+15);
+            if (!isExp) {
+                doc.setFont('helvetica','normal'); doc.setFontSize(9);
+                doc.text('Rate: ' + fmtMoney(secRate) + '/hr', R-10, y+15, { align:'right' });
+            }
+            y += 26;
+
+            // Column headers
+            checkY(18);
+            doc.setFillColor(236, 240, 241);
+            doc.rect(L, y, COL_W, 16, 'F');
+            doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(60,60,60);
+
+            if (isExp) {
+                doc.text('Date',         L+6,   y+11);
+                doc.text('Description',  L+82,  y+11);
+                doc.text('Exp. Type',    L+272, y+11);
+                doc.text('Units',        L+354, y+11, { align:'right' });
+                doc.text('Unit Price',   L+414, y+11, { align:'right' });
+                doc.text('Total',        R-6,   y+11, { align:'right' });
+            } else {
+                doc.text('Date',         L+6,   y+11);
+                doc.text('Description',  L+82,  y+11);
+                doc.text('Hours',        L+380, y+11, { align:'right' });
+                doc.text('Amount',       R-6,   y+11, { align:'right' });
+            }
+            y += 18;
+
+            // Rows
+            let secTotal = 0, secHours = 0;
+            const rows = sec.rows || [];
+            rows.forEach(function(row, ri) {
+                const bg = ri % 2 === 0 ? [255,255,255] : [250,252,255];
+                checkY(18);
+                doc.setFillColor(...bg);
+                doc.rect(L, y, COL_W, 16, 'F');
+                doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
+
+                const dateStr = row.date ? new Date(row.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+                // Truncate description
+                const descFull = row.desc || '';
+                const descShort = descFull.length > 45 ? descFull.substring(0,42) + '...' : descFull;
+
+                if (isExp) {
+                    const units    = parseFloat(row.units) || 0;
+                    const perCost  = parseFloat(row.perCost) || 0;
+                    const rowTotal = units * perCost;
+                    secTotal += rowTotal;
+                    doc.text(dateStr,               L+6,   y+11);
+                    doc.text(descShort,             L+82,  y+11);
+                    doc.text(row.expType || '—',    L+272, y+11);
+                    doc.text(units.toFixed(2),      L+354, y+11, { align:'right' });
+                    doc.text(fmtMoney(perCost),     L+414, y+11, { align:'right' });
+                    doc.text(fmtMoney(rowTotal),    R-6,   y+11, { align:'right' });
+                } else {
+                    const hrs    = parseFloat(row.time) || 0;
+                    const rowAmt = hrs * secRate;
+                    secTotal  += rowAmt;
+                    secHours  += hrs;
+                    doc.text(dateStr,           L+6,   y+11);
+                    doc.text(descShort,         L+82,  y+11);
+                    doc.text(hrs.toFixed(2),    L+380, y+11, { align:'right' });
+                    doc.text(fmtMoney(rowAmt),  R-6,   y+11, { align:'right' });
+                }
+                y += 16;
+            });
+
+            // Subtotal row
+            checkY(20);
+            doc.setFillColor(255, 249, 196);
+            doc.rect(L, y, COL_W, 18, 'F');
+            hline(y, '#e0c000');
+            doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(80,60,0);
+            if (isExp) {
+                doc.text('Section Total:', L+272, y+13);
+            } else {
+                doc.text('Subtotal (' + secHours.toFixed(2) + ' hrs):', L+220, y+13);
+            }
+            doc.text(fmtMoney(secTotal), R-6, y+13, { align:'right' });
+            y += 24;
+        });
+
+        // ── PAYMENT SUMMARY FOOTER ──
+        checkY(110);
+        y += 10;
+        hline(y, '#2c3e50');
+        y += 16;
+
+        const grandTotal = calcInvoiceTotal(inv);
+        const summaryData = [
+            { label: 'Grand Total Due:', value: fmtMoney(grandTotal), bold: false, color: [44,62,80] },
+            { label: 'Amount Paid:',     value: fmtMoney(amountPaid), bold: true,  color: [39,174,96] },
+            { label: 'Remaining Balance:', value: fmtMoney(remaining), bold: true, color: remaining > 0 ? [231,76,60] : [39,174,96] }
+        ];
+
+        summaryData.forEach(function(row) {
+            checkY(26);
+            doc.setFillColor(row.label === 'Remaining Balance:' ? (remaining > 0 ? 253 : 240) : 248, row.label === 'Remaining Balance:' ? (remaining > 0 ? 235 : 255) : 249, row.label === 'Remaining Balance:' ? (remaining > 0 ? 235 : 240) : 250);
+            doc.rect(L, y, COL_W, 22, 'F');
+            doc.setFont('helvetica', row.bold ? 'bold' : 'normal');
+            doc.setFontSize(11);
+            doc.setTextColor(...row.color);
+            doc.text(row.label, L+10, y+15);
+            doc.setFont('helvetica','bold');
+            doc.text(row.value, R-10, y+15, { align:'right' });
+            y += 24;
+        });
+
+        // Paid in Full badge
+        if (remaining === 0) {
+            checkY(30);
+            y += 8;
+            doc.setFillColor(39, 174, 96);
+            doc.roundedRect(L, y, COL_W, 24, 4, 4, 'F');
+            doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+            doc.text('✓  PAID IN FULL', PW/2, y+16, { align:'center' });
+            y += 30;
+        }
+
+        // Footer timestamp
+        y = PH - 36;
+        hline(y, '#cccccc');
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
+        doc.text('Generated by Legal Invoice Portal  ·  ' + new Date().toLocaleString(), PW/2, y+14, { align:'center' });
+
+        // Save
+        const fileName = 'Receipt_' + (inv.payee || 'Invoice').replace(/\s+/g,'_') + '_' + (inv.month_year || '') + '.pdf';
+        doc.save(fileName);
+    }
+
 </script>
+
+    <!-- PAYMENT CONFIRMATION MODAL -->
+    <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:9999; display:none; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; padding:36px; max-width:480px; width:92%; box-shadow:0 8px 40px rgba(0,0,0,0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; border-bottom:2px solid #2c3e50; padding-bottom:14px;">
+                <h2 style="margin:0; font-size:20px; color:#2c3e50;">💳 Confirm Payment</h2>
+                <button onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#888; line-height:1;">×</button>
+            </div>
+            <div style="margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:15px;">
+                    <span style="color:#555;">Payee:</span>
+                    <span id="pmtPayee" style="font-weight:600; color:#2c3e50;"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:15px;">
+                    <span style="color:#555;">Invoice ID:</span>
+                    <span id="pmtInvoiceId" style="font-weight:600; color:#2c3e50; font-size:12px;"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:18px;">
+                    <span style="color:#555; font-weight:700;">Total Due:</span>
+                    <span id="pmtTotalDue" style="font-weight:700; color:#e74c3c;"></span>
+                </div>
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:13px; font-weight:700; color:#2c3e50; margin-bottom:8px;">Amount Being Paid ($):</label>
+                <input type="number" id="pmtAmountInput" step="0.01" min="0" placeholder="Enter payment amount..."
+                    style="width:100%; padding:12px; font-size:16px; border:2px solid #3498db; border-radius:6px; box-sizing:border-box;"
+                    oninput="updatePaymentBalance()">
+            </div>
+            <div style="background:#f8f9fa; border-radius:8px; padding:16px; margin-bottom:24px;">
+                <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:8px;">
+                    <span style="color:#555;">Amount Paid:</span>
+                    <span id="pmtAmountDisplay" style="font-weight:600; color:#27ae60;">$0.00</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:700; padding-top:8px; border-top:1px solid #dee2e6;">
+                    <span style="color:#2c3e50;">Remaining Balance:</span>
+                    <span id="pmtRemaining" style="color:#e74c3c;">$0.00</span>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button onclick="closePaymentModal()" style="padding:10px 24px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">Cancel</button>
+                <button onclick="confirmPayment()" id="pmtConfirmBtn" style="padding:10px 24px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:700;">✓ Confirm & Generate Receipt</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
