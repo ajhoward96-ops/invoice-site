@@ -953,13 +953,13 @@
         <div id="invoiceContainer"></div>
 
         <div id="sectionAdder" style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px;">
-            <strong>Add Billing Category:</strong>
-            <select id="categorySelector" style="padding:8px; margin:0 10px;">
-                <option value="Case Name">Case Name</option>
-                <option value="Paralegal Services">Paralegal Services</option>
-                <option value="Expenses">Expenses</option>
-                <option value="Training">Training</option>
-                <option value="MCLAP General">MCLAP General</option>
+            <strong>Service Owner:</strong>
+            <select id="serviceOwnerSelector" style="padding:8px; margin:0 10px;">
+                <option value="Attorney">Attorney</option>
+                <option value="Paralegal">Paralegal</option>
+                <option value="Associate">Associate</option>
+                <option value="Expert">Expert</option>
+                <option value="Other">Other</option>
             </select>
             <button class="btn btn-submit" onclick="createNewInvoiceSection()">+ Add to Invoice</button>
         </div>
@@ -1820,73 +1820,86 @@
 
     function createNewInvoiceSection(saved = null) {
         const id = saved ? saved.id : Date.now();
-        const cat = saved ? saved.category : document.getElementById('categorySelector').value;
-        
+        const serviceOwner = saved ? (saved.serviceOwner || saved.category || 'Attorney') : document.getElementById('serviceOwnerSelector').value;
+        const caseName     = saved ? (saved.caseName || saved.personName || '') : '';
+        const billingType  = saved ? (saved.billingType || (saved.category === 'Expenses' ? 'Expenses' : (saved.category === 'Training' ? 'Training' : (saved.category === 'MCLAP General' ? 'MCLAP General' : 'Training')))) : 'Training';
+        const savedRate    = saved && saved.rate ? saved.rate : 0;
+
         const sectionDiv = document.createElement('div');
         sectionDiv.id = "sec-" + id;
-        sectionDiv.dataset.cat = cat;
+        sectionDiv.dataset.cat = serviceOwner;       // kept for backward compat
+        sectionDiv.dataset.billingType = billingType;
         sectionDiv.style.marginBottom = "30px";
 
-        let nameHTML = "";
-        if (cat === "Case Name" || cat === "Paralegal Services") {
-            const savedName = saved && saved.personName ? saved.personName : '';
-            nameHTML = `<input type="text" class="sec-name" value="${savedName}">`;
+        // Build table header based on billing type
+        function buildTableHTML(bt) {
+            if (bt === 'Expenses') {
+                return `<thead><tr>
+                    <th style="width:160px;">Date</th>
+                    <th>Description</th>
+                    <th style="width:100px;">Type</th>
+                    <th style="width:70px;">Units</th>
+                    <th style="width:100px;">Per Cost</th>
+                    <th style="width:110px;">Total</th>
+                </tr></thead>`;
+            } else {
+                return `<thead><tr>
+                    <th style="width:160px;">Date</th>
+                    <th>Description</th>
+                    <th style="width:100px;">Time</th>
+                    <th style="width:130px;">Amount</th>
+                </tr></thead>`;
+            }
         }
 
-        const savedRate = saved && saved.rate ? saved.rate : 0;
+        function buildSubtotalHTML(bt, secId) {
+            if (bt === 'Expenses') {
+                return `<tr style="background:#fff9c4; font-weight:bold;">
+                    <td colspan="4" style="text-align:right; padding:12px;">Total</td>
+                    <td></td>
+                    <td id="val-${secId}" style="text-align:right; padding-right:15px;">$0.00</td>
+                </tr>`;
+            } else {
+                return `<tr style="background:#fff9c4; font-weight:bold;">
+                    <td colspan="2" style="text-align:right; padding:12px;">Subtotal</td>
+                    <td id="hrs-${secId}" style="text-align:center;">0.00</td>
+                    <td id="val-${secId}" style="text-align:right; padding-right:15px;">$0.00</td>
+                </tr>`;
+            }
+        }
 
         sectionDiv.innerHTML = `
             <div class="section-bar">
-                <span>
-                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span> 
-                    ${cat} ${nameHTML}
+                <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
+                    <strong>${serviceOwner}</strong>
+                    <span style="font-size:12px; color:#555;">Case Name:</span>
+                    <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
                 </span>
-                <div>
-                    ${cat === "Expenses" ? "" : `Rate: $<input type="number" class="rate-box" value="${savedRate}" oninput="calculateInvoices()"> `}
-                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="deleteSection('${id}')">✕</button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label style="font-size:12px; color:#555;">Billing Type:</label>
+                    <select class="billing-type-select" id="billingType-${id}" style="padding:5px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px;">
+                        <option value="Training" ${billingType==='Training'?'selected':''}>Training</option>
+                        <option value="MCLAP General" ${billingType==='MCLAP General'?'selected':''}>MCLAP General</option>
+                        <option value="Expenses" ${billingType==='Expenses'?'selected':''}>Expenses</option>
+                    </select>
+                    ${billingType !== 'Expenses' ? `Rate: $<input type="number" class="rate-box" value="${savedRate}" style="width:70px; padding:4px;" onchange="calculateInvoices()">` : ''}
+                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">✕</button>
                 </div>
             </div>
             <div id="content-${id}">
-                <table class="grid-table">
-                    ${cat === 'Expenses' ? `
-                        <thead>
-                            <tr>
-                                <th style="width:160px;">Date</th>
-                                <th>Description</th>
-                                <th style="width:100px;">Type</th>
-                                <th style="width:70px;">Units</th>
-                                <th style="width:100px;">Per Cost</th>
-                                <th style="width:110px;">Total</th>
-                            </tr>
-                        </thead>` : `
-                        <thead>
-                            <tr>
-                                <th style="width:160px;">Date</th>
-                                <th>Description</th>
-                                <th style="width:100px;">Time</th>
-                                <th style="width:130px;">Amount</th>
-                            </tr>
-                        </thead>`}
+                <table class="grid-table" id="table-${id}">
+                    ${buildTableHTML(billingType)}
                     <tbody id="body-${id}"></tbody>
-                    ${cat === 'Expenses' ? `
-                    <tr style="background:#fff9c4; font-weight:bold;">
-                        <td colspan="4" style="text-align:right; padding:12px;">Total</td>
-                        <td></td>
-                        <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
-                    </tr>` : `
-                    <tr style="background:#fff9c4; font-weight:bold;">
-                        <td colspan="2" style="text-align:right; padding:12px;">Subtotal</td>
-                        <td id="hrs-${id}" style="text-align:center;">0.00</td>
-                        <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
-                    </tr>`}
+                    ${buildSubtotalHTML(billingType, id)}
                 </table>
-                ${cat === 'Expenses' ? `
+                ${billingType === 'Expenses' ? `
                 <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;">
                     <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label>
                     <input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;">
                     <span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>
                 </div>` : ''}
-                <div style="margin-top:10px;">
+                <div style="margin-top:10px;" id="rowbtns-${id}">
                     <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
                 </div>
@@ -1897,6 +1910,7 @@
             </div>`;
 
         document.getElementById('invoiceContainer').appendChild(sectionDiv);
+
         // Show saved kickback note if present (law team view)
         if (saved && saved.kickNote) {
             const notesPanel = document.getElementById('kicknotes-' + id);
@@ -1916,8 +1930,19 @@
             }
         }
 
+        // Wire up billing type change
+        const btSelect = document.getElementById('billingType-' + id);
+        if (btSelect) {
+            btSelect.addEventListener('change', function() {
+                const newBt = this.value;
+                sectionDiv.dataset.billingType = newBt;
+                sectionDiv.dataset.cat = newBt === 'Expenses' ? 'Expenses' : serviceOwner;
+                rebuildSectionForBillingType(id, newBt);
+            });
+        }
+
         // Wire up PDF file count display if Expenses
-        if (cat === 'Expenses') {
+        if (billingType === 'Expenses') {
             const pdfInput = document.getElementById('pdf-upload-' + id);
             if (pdfInput) {
                 pdfInput.addEventListener('change', function() {
@@ -1926,7 +1951,7 @@
                 });
             }
         }
-        
+
         if (saved && saved.rows) {
             saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
         } else {
@@ -1934,10 +1959,87 @@
         }
     }
 
+    function rebuildSectionForBillingType(id, billingType) {
+        const sectionEl = document.getElementById('sec-' + id);
+        if (!sectionEl) return;
+        // Remove rate box or add it
+        const barRight = sectionEl.querySelector('.section-bar > div');
+        const existingRate = barRight ? barRight.querySelector('.rate-box') : null;
+        if (billingType === 'Expenses') {
+            if (existingRate) existingRate.previousSibling && existingRate.previousSibling.remove && existingRate.previousSibling.remove();
+            if (existingRate) existingRate.remove();
+        } else {
+            if (!existingRate && barRight) {
+                const rateLabel = document.createTextNode('Rate: $');
+                const rateInput = document.createElement('input');
+                rateInput.type = 'number';
+                rateInput.className = 'rate-box';
+                rateInput.value = 0;
+                rateInput.style.cssText = 'width:70px; padding:4px;';
+                rateInput.onchange = calculateInvoices;
+                const xBtn = barRight.querySelector('button');
+                if (xBtn) { barRight.insertBefore(rateInput, xBtn); barRight.insertBefore(rateLabel, rateInput); }
+            }
+        }
+        // Rebuild table
+        const table = document.getElementById('table-' + id);
+        if (table) {
+            const oldThead = table.querySelector('thead');
+            const oldSubtotal = table.querySelector('tbody + tr, tbody ~ tr');
+            // Build new thead
+            const newTheadHTML = billingType === 'Expenses' ?
+                `<thead><tr>
+                    <th style="width:160px;">Date</th><th>Description</th>
+                    <th style="width:100px;">Type</th><th style="width:70px;">Units</th>
+                    <th style="width:100px;">Per Cost</th><th style="width:110px;">Total</th>
+                </tr></thead>` :
+                `<thead><tr>
+                    <th style="width:160px;">Date</th><th>Description</th>
+                    <th style="width:100px;">Time</th><th style="width:130px;">Amount</th>
+                </tr></thead>`;
+            if (oldThead) oldThead.outerHTML = newTheadHTML;
+            // Clear rows and subtotal
+            const tbody = document.getElementById('body-' + id);
+            if (tbody) tbody.innerHTML = '';
+            // Remove old subtotal rows (trs after tbody)
+            Array.from(table.querySelectorAll('tbody ~ tr')).forEach(tr => tr.remove());
+            // Re-add subtotal
+            const subtotalRow = document.createElement('tr');
+            subtotalRow.style.cssText = 'background:#fff9c4; font-weight:bold;';
+            if (billingType === 'Expenses') {
+                subtotalRow.innerHTML = `<td colspan="4" style="text-align:right; padding:12px;">Total</td><td></td><td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>`;
+            } else {
+                subtotalRow.innerHTML = `<td colspan="2" style="text-align:right; padding:12px;">Subtotal</td><td id="hrs-${id}" style="text-align:center;">0.00</td><td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>`;
+            }
+            if (tbody) tbody.after(subtotalRow);
+            // Handle PDF upload block
+            const contentDiv = document.getElementById('content-' + id);
+            const existingPdf = sectionEl.querySelector('[id^="pdf-upload-"]')?.closest('div');
+            if (billingType === 'Expenses') {
+                if (!existingPdf) {
+                    const pdfDiv = document.createElement('div');
+                    pdfDiv.style.cssText = 'display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;';
+                    pdfDiv.innerHTML = `<label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label><input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;"><span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>`;
+                    const rowBtns = document.getElementById('rowbtns-' + id);
+                    if (rowBtns) contentDiv.insertBefore(pdfDiv, rowBtns);
+                    const pdfInput = document.getElementById('pdf-upload-' + id);
+                    if (pdfInput) pdfInput.addEventListener('change', function() {
+                        const countEl = document.getElementById('pdf-count-' + id);
+                        if (countEl) countEl.innerText = this.files.length > 0 ? this.files.length + ' file(s) selected' : '';
+                    });
+                }
+            } else {
+                if (existingPdf) existingPdf.remove();
+            }
+        }
+        addInvoiceRow(id);
+        calculateInvoices();
+    }
+
     function addInvoiceRow(sectionId, rowData = null) {
         const tbody = document.getElementById("body-" + sectionId);
         const sectionEl = document.getElementById("sec-" + sectionId);
-        const isExpenses = sectionEl && sectionEl.dataset.cat === 'Expenses';
+        const isExpenses = sectionEl && (sectionEl.dataset.billingType === 'Expenses');
         const row = document.createElement('tr');
         row.className = "item-row";
 
@@ -2044,7 +2146,7 @@
 
         document.querySelectorAll('[id^="sec-"]').forEach(function(section) {
             let sectionHrs = 0, sectionVal = 0;
-            const isExpensesSection = section.dataset.cat === 'Expenses';
+            const isExpensesSection = (section.dataset.billingType === 'Expenses');
             const rateBox = section.querySelector('.rate-box');
             const rate = rateBox ? (parseFloat(rateBox.value) || 0) : 0;
             
@@ -2098,7 +2200,7 @@
             const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0];
             const personNameInput = sectionElement.querySelector('.sec-name');
             const rateInput = sectionElement.querySelector('.rate-box');
-            const isExpSect = sectionElement.dataset.cat === 'Expenses';
+            const isExpSect = (sectionElement.dataset.billingType === 'Expenses');
             const rowsArray = Array.from(sectionElement.querySelectorAll('.item-row')).map(function(rowElement) {
                 if (isExpSect) {
                     return {
@@ -2115,10 +2217,18 @@
                     time: rowElement.cells[2].querySelector('input').value
                 };
             });
+            // Read new fields
+            const btSelect = document.getElementById('billingType-' + sectionElement.id.replace('sec-', ''));
+            const billingTypeSaved = sectionElement.dataset.billingType || (btSelect ? btSelect.value : 'Training');
+            const serviceOwnerSaved = sectionElement.dataset.cat || 'Attorney';
+            const caseNameSaved = personNameInput ? personNameInput.value : '';
             return {
                 id: sectionElement.id.replace('sec-', ''),
-                category: categoryText,
-                personName: personNameInput ? personNameInput.value : "",
+                serviceOwner: serviceOwnerSaved,
+                caseName: caseNameSaved,
+                billingType: billingTypeSaved,
+                category: billingTypeSaved,     // backward compat
+                personName: caseNameSaved,       // backward compat
                 rate: rateInput ? rateInput.value : 0,
                 rows: rowsArray,
                 kickNote: (function() { const ta = sectionElement.querySelector('.kicknote-field'); return ta ? ta.value : ''; })()
