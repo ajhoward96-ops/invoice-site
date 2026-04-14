@@ -972,9 +972,11 @@
                 <button class="btn" id="btnExcel" style="background:#1f6e43; color:white" onclick="downloadExcel()">Export Excel</button>
             </div>
             
-            <div id="adminActions" style="display:none; gap:12px;">
-                <button class="btn btn-kick" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Sent Back')">Kickback</button>
-                <button class="btn btn-ready" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve for Payment</button>
+            <div id="adminActions" style="display:none; gap:12px; flex-wrap:wrap; align-items:center;">
+                <button class="btn btn-kick" id="btnStartKickback" onclick="startKickback()">Kick Back</button>
+                <button class="btn btn-kick" id="btnSendBack" style="display:none; background:#b71c1c;" onclick="sendBackWithNotes()">✉️ Send Back to Law Team</button>
+                <button class="btn" id="btnCancelKickback" style="display:none; background:#888; color:white;" onclick="cancelKickback()">Cancel</button>
+                <button class="btn btn-ready" id="btnApprove" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve for Payment</button>
             </div>
 
             <div class="grand-total-box">
@@ -1379,6 +1381,59 @@
         await supabaseClient.from('invoices').update({ status: newStatus }).eq('month_year', id);
         loadFinanceView(); 
     }
+
+    // ---- KICKBACK FLOW ----
+    function startKickback() {
+        // Show all kickback note panels on all sections
+        document.querySelectorAll('.kickback-notes-panel').forEach(function(panel) {
+            panel.style.display = 'block';
+            panel.style.background = '#fff3cd';
+            panel.style.borderColor = '#ffc107';
+            const lbl = panel.querySelector('label');
+            if (lbl) { lbl.innerText = '📝 Finance Notes for this section:'; lbl.style.color = '#856404'; }
+            const ta = panel.querySelector('textarea');
+            if (ta) { ta.readOnly = false; ta.style.background = ''; ta.style.color = ''; ta.style.fontWeight = ''; ta.style.cursor = ''; }
+        });
+        document.getElementById('btnStartKickback').style.display = 'none';
+        document.getElementById('btnApprove').style.display = 'none';
+        document.getElementById('btnSendBack').style.display = 'inline-block';
+        document.getElementById('btnCancelKickback').style.display = 'inline-block';
+    }
+
+    function cancelKickback() {
+        document.querySelectorAll('.kickback-notes-panel').forEach(function(panel) {
+            panel.style.display = 'none';
+        });
+        document.getElementById('btnStartKickback').style.display = 'inline-block';
+        document.getElementById('btnApprove').style.display = 'inline-block';
+        document.getElementById('btnSendBack').style.display = 'none';
+        document.getElementById('btnCancelKickback').style.display = 'none';
+    }
+
+    async function sendBackWithNotes() {
+        // Collect notes from each section
+        const sections = Array.from(document.querySelectorAll('[id^="sec-"]'));
+        const notesMap = {};
+        sections.forEach(function(sec) {
+            const sectionId = sec.id.replace('sec-', '');
+            const ta = sec.querySelector('.kicknote-field');
+            notesMap[sectionId] = ta ? ta.value : '';
+        });
+        // Load current invoice data, merge notes into sections, save back
+        const { data } = await supabaseClient.from('invoices').select('*').eq('month_year', activeAdminInvoiceId).single();
+        if (data && data.sections) {
+            const updatedSections = data.sections.map(function(sec) {
+                return Object.assign({}, sec, { kickNote: notesMap[String(sec.id)] || '' });
+            });
+            await supabaseClient.from('invoices').update({
+                status: 'Sent Back',
+                sections: updatedSections
+            }).eq('month_year', activeAdminInvoiceId);
+            alert('Invoice sent back to law team with notes!');
+            navigateBackToDashboard();
+        }
+    }
+
 
     function navigateBackToDashboard() {
         activeAdminInvoiceId = "";
@@ -1835,9 +1890,32 @@
                     <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
                 </div>
+            <div id="kicknotes-${id}" class="kickback-notes-panel" style="display:none; margin-top:14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px;">
+                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">📝 Finance Notes for this section:</label>
+                <textarea id="kicknote-${id}" class="kicknote-field" placeholder="Enter corrections needed for this section..." style="width:100%; min-height:70px; padding:8px; border:1px solid #ffc107; border-radius:4px; font-size:13px; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
             </div>`;
 
         document.getElementById('invoiceContainer').appendChild(sectionDiv);
+        // Show saved kickback note if present (law team view)
+        if (saved && saved.kickNote) {
+            const notesPanel = document.getElementById('kicknotes-' + id);
+            const noteTA = document.getElementById('kicknote-' + id);
+            if (notesPanel && noteTA) {
+                notesPanel.style.display = 'block';
+                notesPanel.style.background = '#fde8e8';
+                notesPanel.style.borderColor = '#e74c3c';
+                notesPanel.querySelector('label').innerText = '⚠️ Finance Correction Note:';
+                notesPanel.querySelector('label').style.color = '#c0392b';
+                noteTA.value = saved.kickNote;
+                noteTA.readOnly = true;
+                noteTA.style.background = '#fff5f5';
+                noteTA.style.color = '#c0392b';
+                noteTA.style.fontWeight = '600';
+                noteTA.style.cursor = 'default';
+            }
+        }
+
         // Wire up PDF file count display if Expenses
         if (cat === 'Expenses') {
             const pdfInput = document.getElementById('pdf-upload-' + id);
@@ -2042,7 +2120,8 @@
                 category: categoryText,
                 personName: personNameInput ? personNameInput.value : "",
                 rate: rateInput ? rateInput.value : 0,
-                rows: rowsArray
+                rows: rowsArray,
+                kickNote: (function() { const ta = sectionElement.querySelector('.kicknote-field'); return ta ? ta.value : ''; })()
             };
         });
 
@@ -2130,6 +2209,11 @@
         document.getElementById('backBtn').style.display = "block";
         document.getElementById('userActions').style.display = "none";
         document.getElementById('adminActions').style.display = "flex";
+        // Reset kickback buttons to default state
+        if (document.getElementById('btnStartKickback')) document.getElementById('btnStartKickback').style.display = 'inline-block';
+        if (document.getElementById('btnSendBack')) document.getElementById('btnSendBack').style.display = 'none';
+        if (document.getElementById('btnCancelKickback')) document.getElementById('btnCancelKickback').style.display = 'none';
+        if (document.getElementById('btnApprove')) document.getElementById('btnApprove').style.display = 'inline-block';
         document.getElementById('sectionAdder').style.display = "none";
         document.getElementById('userPrev').style.display = "none";
         document.getElementById('userNext').style.display = "none";
