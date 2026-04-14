@@ -783,7 +783,47 @@
         </div>
         <div class="nav-group">
             <button class="btn btn-nav-grey" id="btnDataVault" style="display:none;" onclick="openDataVault()">Data Vault</button>
+            <button class="btn btn-nav-blue" onclick="openAccountModal()" style="margin-right:6px;">Account</button>
             <button class="btn btn-nav-red" onclick="location.reload()">Logout</button>
+        </div>
+    </div>
+
+    <div id="accountModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:10px; padding:30px; max-width:500px; width:90%; max-height:85vh; overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0; font-size:18px; color:#2c3e50;">Account Settings</h2>
+                <button onclick="closeAccountModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#666;">&times;</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.5px;">User Key</label>
+                    <input type="text" id="acct-userKey" placeholder="Your user key" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; box-sizing:border-box; margin-top:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Payee Name</label>
+                    <input type="text" id="acct-payeeName" placeholder="Full name" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; box-sizing:border-box; margin-top:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Firm / Organization</label>
+                    <input type="text" id="acct-firmName" placeholder="Firm or organization name" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; box-sizing:border-box; margin-top:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Address Line 1</label>
+                    <input type="text" id="acct-address1" placeholder="Street address" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; box-sizing:border-box; margin-top:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Address Line 2</label>
+                    <input type="text" id="acct-address2" placeholder="City, State, ZIP" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; box-sizing:border-box; margin-top:4px;">
+                </div>
+                <div>
+                    <label style="font-size:12px; font-weight:700; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Address Line 3</label>
+                    <input type="text" id="acct-address3" placeholder="Country / additional info" style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px; box-sizing:border-box; margin-top:4px;">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                <button onclick="closeAccountModal()" style="padding:8px 18px; background:#ccc; border:none; border-radius:5px; cursor:pointer; font-size:13px;">Cancel</button>
+                <button onclick="saveAccountSettings()" style="padding:8px 18px; background:#2c3e50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:13px; font-weight:600;">Save Changes</button>
+            </div>
         </div>
     </div>
 
@@ -926,7 +966,7 @@
 
         <div style="margin-top:40px; display:flex; justify-content:space-between; align-items:center; border-top: 2px solid #eee; padding-top:25px;">
             <div id="userActions" style="display:flex; gap:12px;">
-                <button class="btn btn-save" id="btnSync" onclick="syncInvoiceData(false)">Sync Progress</button>
+                <button class="btn btn-save" id="btnSync" onclick="syncInvoiceData(false)">Save Progress</button>
                 <button class="btn btn-submit" id="btnSubmit" onclick="syncInvoiceData(true)">Submit for Review</button>
                 <button class="btn btn-resubmit" id="btnResubmit" onclick="resubmitCorrections()">Resubmit Corrections</button>
                 <button class="btn" id="btnExcel" style="background:#1f6e43; color:white" onclick="downloadExcel()">Export Excel</button>
@@ -988,6 +1028,23 @@
             </div>
             <button class="btn-load-vault" onclick="loadVaultData()">Load Report</button>
         </div>
+
+        <!-- PAYEE FILTER -->
+        <div class="period-controls" id="payeeFilterBar" style="gap:12px; flex-wrap:wrap;">
+            <label style="font-weight:700; color:#2c3e50;">Filter by Payee:</label>
+            <div style="position:relative; display:inline-block;">
+                <input type="text" id="payeeFilterInput" placeholder="Type or select payee..." 
+                    autocomplete="off"
+                    oninput="filterPayeeDropdown(this.value)"
+                    onfocus="showPayeeDropdown()"
+                    style="padding:7px 12px; border:1px solid #ccc; border-radius:5px; font-size:13px; width:220px; cursor:text;">
+                <div id="payeeDropdownList" style="display:none; position:absolute; top:100%; left:0; width:100%; background:white; border:1px solid #ccc; border-radius:0 0 5px 5px; max-height:200px; overflow-y:auto; z-index:999; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+                </div>
+            </div>
+            <button onclick="clearPayeeFilter()" style="padding:6px 14px; background:#e0e0e0; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600;">&#10005; Clear Filter</button>
+            <span id="payeeFilterLabel" style="font-size:12px; color:#888; font-style:italic;"></span>
+        </div>
+
 
         <div id="vaultContent">
             <div class="vault-loading">Select a time period and click <strong>Load Report</strong> to begin.</div>
@@ -1411,6 +1468,7 @@
 
         vaultData = data;
         renderVault(data);
+        populatePayeeDropdown();
     }
 
     function calcInvoiceTotal(inv) {
@@ -2131,6 +2189,143 @@
         XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice");
         XLSX.writeFile(workbook, "Invoice_" + currentUserCode + ".xlsx");
     }
+
+        // ---- ACCOUNT MODAL ----
+        function openAccountModal() {
+            // Pre-fill from current invoice fields
+            const modal = document.getElementById('accountModal');
+            document.getElementById('acct-payeeName').value = document.getElementById('payeeName') ? document.getElementById('payeeName').value : '';
+            document.getElementById('acct-firmName').value = document.getElementById('firmName') ? document.getElementById('firmName').value : '';
+            document.getElementById('acct-address1').value = document.getElementById('address1') ? document.getElementById('address1').value : '';
+            document.getElementById('acct-address2').value = document.getElementById('address2') ? document.getElementById('address2').value : '';
+            document.getElementById('acct-address3').value = document.getElementById('address3') ? document.getElementById('address3').value : '';
+            document.getElementById('acct-userKey').value = typeof currentUserCode !== 'undefined' ? currentUserCode : '';
+            modal.style.display = 'flex';
+        }
+
+        function closeAccountModal() {
+            document.getElementById('accountModal').style.display = 'none';
+        }
+
+        function saveAccountSettings() {
+            // Update invoice section fields
+            const payeeEl = document.getElementById('payeeName');
+            const firmEl = document.getElementById('firmName');
+            const addr1El = document.getElementById('address1');
+            const addr2El = document.getElementById('address2');
+            const addr3El = document.getElementById('address3');
+
+            if (payeeEl) payeeEl.value = document.getElementById('acct-payeeName').value;
+            if (firmEl) firmEl.value = document.getElementById('acct-firmName').value;
+            if (addr1El) addr1El.value = document.getElementById('acct-address1').value;
+            if (addr2El) addr2El.value = document.getElementById('acct-address2').value;
+            if (addr3El) addr3El.value = document.getElementById('acct-address3').value;
+
+            // Update user key if changed
+            const newKey = document.getElementById('acct-userKey').value.trim();
+            if (newKey && typeof currentUserCode !== 'undefined' && newKey !== currentUserCode) {
+                currentUserCode = newKey;
+                const keyDisplay = document.getElementById('currentUserDisplay');
+                if (keyDisplay) keyDisplay.innerText = newKey;
+            }
+
+            closeAccountModal();
+            alert('Account settings saved!');
+        }
+
+        // Close modal on backdrop click
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('accountModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) closeAccountModal();
+                });
+            }
+        });
+
+
+        // ---- PAYEE FILTER ----
+        let activePayeeFilter = null;
+
+        function populatePayeeDropdown() {
+            if (!vaultData || !vaultData.length) return;
+            // Get unique payee names
+            const payees = [...new Set(vaultData.map(inv => inv.payee).filter(Boolean))].sort();
+            const list = document.getElementById('payeeDropdownList');
+            if (!list) return;
+            list.innerHTML = '';
+            // "All payees" option
+            const allOpt = document.createElement('div');
+            allOpt.innerText = '— All Payees —';
+            allOpt.style.cssText = 'padding:8px 12px; cursor:pointer; font-style:italic; color:#888; border-bottom:1px solid #eee;';
+            allOpt.onmouseover = function() { this.style.background = '#f0f0f0'; };
+            allOpt.onmouseout = function() { this.style.background = ''; };
+            allOpt.onclick = function() { clearPayeeFilter(); };
+            list.appendChild(allOpt);
+            payees.forEach(function(name) {
+                const item = document.createElement('div');
+                item.innerText = name;
+                item.style.cssText = 'padding:8px 12px; cursor:pointer; font-size:13px;';
+                item.onmouseover = function() { this.style.background = '#e8f0fe'; };
+                item.onmouseout = function() { this.style.background = ''; };
+                item.onclick = function() { selectPayeeFilter(name); };
+                list.appendChild(item);
+            });
+        }
+
+        function showPayeeDropdown() {
+            populatePayeeDropdown();
+            const list = document.getElementById('payeeDropdownList');
+            if (list) list.style.display = 'block';
+        }
+
+        function filterPayeeDropdown(query) {
+            populatePayeeDropdown();
+            const list = document.getElementById('payeeDropdownList');
+            if (!list) return;
+            list.style.display = 'block';
+            const items = list.querySelectorAll('div');
+            items.forEach(function(item) {
+                const text = item.innerText.toLowerCase();
+                item.style.display = (text.includes(query.toLowerCase()) || text.includes('all payees')) ? 'block' : 'none';
+            });
+        }
+
+        function selectPayeeFilter(name) {
+            activePayeeFilter = name;
+            const input = document.getElementById('payeeFilterInput');
+            if (input) input.value = name;
+            const list = document.getElementById('payeeDropdownList');
+            if (list) list.style.display = 'none';
+            const label = document.getElementById('payeeFilterLabel');
+            if (label) label.innerText = 'Showing: ' + name;
+            // Re-render vault with filtered data
+            if (vaultData) {
+                const filtered = vaultData.filter(function(inv) { return inv.payee === name; });
+                renderVault(filtered);
+            }
+        }
+
+        function clearPayeeFilter() {
+            activePayeeFilter = null;
+            const input = document.getElementById('payeeFilterInput');
+            if (input) input.value = '';
+            const list = document.getElementById('payeeDropdownList');
+            if (list) list.style.display = 'none';
+            const label = document.getElementById('payeeFilterLabel');
+            if (label) label.innerText = '';
+            if (vaultData) renderVault(vaultData);
+        }
+
+        // Close payee dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const bar = document.getElementById('payeeFilterBar');
+            if (bar && !bar.contains(e.target)) {
+                const list = document.getElementById('payeeDropdownList');
+                if (list) list.style.display = 'none';
+            }
+        });
+
 </script>
 </body>
 </html>
