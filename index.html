@@ -952,16 +952,27 @@
 
         <div id="invoiceContainer"></div>
 
-        <div id="sectionAdder" style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px;">
-            <strong>Service Owner:</strong>
-            <select id="serviceOwnerSelector" style="padding:8px; margin:0 10px;">
-                <option value="Attorney">Attorney</option>
-                <option value="Paralegal">Paralegal</option>
-                <option value="Associate">Associate</option>
-                <option value="Expert">Expert</option>
-                <option value="Other">Other</option>
-            </select>
-            <button class="btn btn-submit" onclick="createNewInvoiceSection()">+ Add to Invoice</button>
+        <div id="sectionAdder" style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px; display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+            <div>
+                <label style="display:block; font-weight:700; font-size:13px; margin-bottom:6px; color:#2c3e50;">Service Type:</label>
+                <select id="serviceTypeSelector" style="padding:8px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
+                    <option value="Operations Director">Operations Director</option>
+                    <option value="Finance Director">Finance Director</option>
+                    <option value="Program Director">Program Director</option>
+                    <option value="Finance/Program Coordinator/Clerk">Finance/Program Coordinator/Clerk</option>
+                    <option value="Attorney">Attorney</option>
+                    <option value="Associate Attorney">Associate Attorney</option>
+                    <option value="Paralegal">Paralegal</option>
+                    <option value="Expert">Expert</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-weight:700; font-size:13px; margin-bottom:6px; color:#2c3e50;">Case Name:</label>
+                <input type="text" id="caseNameInput" placeholder="Enter case name..." style="padding:8px; border:1px solid #ccc; border-radius:5px; font-size:13px; min-width:200px;">
+            </div>
+            <button class="btn btn-submit" onclick="createNewInvoiceSection()" style="align-self:flex-end;">+ Add Billing Section</button>
+            <button class="btn" onclick="createNewExpensesSection()" style="background:#e67e22; color:white; align-self:flex-end;">+ Add Expenses Section</button>
         </div>
 
         <div style="margin-top:40px; display:flex; justify-content:space-between; align-items:center; border-top: 2px solid #eee; padding-top:25px;">
@@ -1575,22 +1586,32 @@
         });
 
         // ── 2. SPEND BY CATEGORY ──
-        const categories = ['Case Name', 'Paralegal Services', 'Expenses', 'Training', 'MCLAP General'];
+        // ── 2. SPEND BY SERVICE TYPE ──
+        const serviceTypes = ['Operations Director','Finance Director','Program Director','Finance/Program Coordinator/Clerk','Attorney','Associate Attorney','Paralegal','Expert','Other','Expenses'];
         const catTotals = {};
         const catHours = {};
-        categories.forEach(function(c) { catTotals[c] = 0; catHours[c] = 0; });
+        serviceTypes.forEach(function(c) { catTotals[c] = 0; catHours[c] = 0; });
 
         data.forEach(function(inv) {
             if (inv.sections) {
                 inv.sections.forEach(function(sec) {
                     const rate = parseFloat(sec.rate) || 0;
-                    const catKey = sec.category;
-                    if (!catTotals[catKey]) { catTotals[catKey] = 0; catHours[catKey] = 0; }
+                    // Use serviceType if available, else fall back to old category
+                    let catKey = sec.serviceType || sec.serviceOwner || '';
+                    if (sec.billingType === 'Expenses' || sec.category === 'Expenses') catKey = 'Expenses';
+                    if (!catKey) catKey = sec.category || 'Other';
+                    if (!catTotals[catKey] && catTotals[catKey] !== 0) { catTotals[catKey] = 0; catHours[catKey] = 0; }
                     if (sec.rows) {
                         sec.rows.forEach(function(row) {
-                            const hrs = parseFloat(row.time) || 0;
-                            catTotals[catKey] += hrs * rate;
-                            catHours[catKey] += hrs;
+                            if (sec.billingType === 'Expenses' || sec.category === 'Expenses') {
+                                const units = parseFloat(row.units) || 0;
+                                const perCost = parseFloat(row.perCost) || 0;
+                                catTotals[catKey] = (catTotals[catKey] || 0) + units * perCost;
+                            } else {
+                                const hrs = parseFloat(row.time) || 0;
+                                catTotals[catKey] = (catTotals[catKey] || 0) + hrs * rate;
+                                catHours[catKey] = (catHours[catKey] || 0) + hrs;
+                            }
                         });
                     }
                 });
@@ -1653,7 +1674,7 @@
             <!-- KPI CARDS -->
             <div class="kpi-grid">
                 <div class="kpi-card pending">
-                    <div class="kpi-label">Total Pending Liability</div>
+                    <div class="kpi-label">Total Pending Amount</div>
                     <div class="kpi-value">$${pendingLiability.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
                     <div class="kpi-sub">Pending + Sent Back invoices</div>
                 </div>
@@ -1672,12 +1693,12 @@
             <!-- SPEND BY CATEGORY -->
             <div class="vault-section">
                 <div class="vault-section-header">
-                    <h3>Spend by Billing Category</h3>
+                    <h3>Spend by Service Type</h3>
                     <span class="section-meta">${label}</span>
                 </div>
                 <div class="vault-section-body">
                     <div class="category-breakdown">
-                        ${categories.map(function(cat) {
+                        ${serviceTypes.map(function(cat) {
                             const amt = catTotals[cat] || 0;
                             const hrs = catHours[cat] || 0;
                             const pct = maxCatVal > 0 ? (amt / maxCatVal * 100) : 0;
@@ -1818,87 +1839,50 @@
        INVOICE BUILDER (unchanged from original)
        ===================================================== */
 
-    function createNewInvoiceSection(saved = null) {
-        const id = saved ? saved.id : Date.now();
-        const serviceOwner = saved ? (saved.serviceOwner || saved.category || 'Attorney') : document.getElementById('serviceOwnerSelector').value;
-        const caseName     = saved ? (saved.caseName || saved.personName || '') : '';
-        const billingType  = saved ? (saved.billingType || (saved.category === 'Expenses' ? 'Expenses' : (saved.category === 'Training' ? 'Training' : (saved.category === 'MCLAP General' ? 'MCLAP General' : 'Training')))) : 'Training';
-        const savedRate    = saved && saved.rate ? saved.rate : 0;
+    function createNewInvoiceSection(saved) {
+        // Standard billing section (rate × hours)
+        const id          = saved ? saved.id : Date.now();
+        const serviceType = saved ? (saved.serviceType || saved.serviceOwner || saved.category || 'Attorney') : document.getElementById('serviceTypeSelector').value;
+        const caseName    = saved ? (saved.caseName || saved.personName || '') : (document.getElementById('caseNameInput') ? document.getElementById('caseNameInput').value : '');
+        const savedRate   = saved && saved.rate ? saved.rate : 0;
+
+        // Clear the case name input after use
+        if (!saved && document.getElementById('caseNameInput')) document.getElementById('caseNameInput').value = '';
 
         const sectionDiv = document.createElement('div');
-        sectionDiv.id = "sec-" + id;
-        sectionDiv.dataset.cat = serviceOwner;       // kept for backward compat
-        sectionDiv.dataset.billingType = billingType;
-        sectionDiv.style.marginBottom = "30px";
-
-        // Build table header based on billing type
-        function buildTableHTML(bt) {
-            if (bt === 'Expenses') {
-                return `<thead><tr>
-                    <th style="width:160px;">Date</th>
-                    <th>Description</th>
-                    <th style="width:100px;">Type</th>
-                    <th style="width:70px;">Units</th>
-                    <th style="width:100px;">Per Cost</th>
-                    <th style="width:110px;">Total</th>
-                </tr></thead>`;
-            } else {
-                return `<thead><tr>
-                    <th style="width:160px;">Date</th>
-                    <th>Description</th>
-                    <th style="width:100px;">Time</th>
-                    <th style="width:130px;">Amount</th>
-                </tr></thead>`;
-            }
-        }
-
-        function buildSubtotalHTML(bt, secId) {
-            if (bt === 'Expenses') {
-                return `<tr style="background:#fff9c4; font-weight:bold;">
-                    <td colspan="4" style="text-align:right; padding:12px;">Total</td>
-                    <td></td>
-                    <td id="val-${secId}" style="text-align:right; padding-right:15px;">$0.00</td>
-                </tr>`;
-            } else {
-                return `<tr style="background:#fff9c4; font-weight:bold;">
-                    <td colspan="2" style="text-align:right; padding:12px;">Subtotal</td>
-                    <td id="hrs-${secId}" style="text-align:center;">0.00</td>
-                    <td id="val-${secId}" style="text-align:right; padding-right:15px;">$0.00</td>
-                </tr>`;
-            }
-        }
+        sectionDiv.id = 'sec-' + id;
+        sectionDiv.dataset.cat = serviceType;
+        sectionDiv.dataset.billingType = 'Standard';
+        sectionDiv.style.marginBottom = '30px';
 
         sectionDiv.innerHTML = `
             <div class="section-bar">
                 <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
-                    <strong>${serviceOwner}</strong>
+                    <strong>${serviceType}</strong>
                     <span style="font-size:12px; color:#555;">Case Name:</span>
                     <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
                 </span>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <label style="font-size:12px; color:#555;">Billing Type:</label>
-                    <select class="billing-type-select" id="billingType-${id}" style="padding:5px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px;">
-                        <option value="Training" ${billingType==='Training'?'selected':''}>Training</option>
-                        <option value="MCLAP General" ${billingType==='MCLAP General'?'selected':''}>MCLAP General</option>
-                        <option value="Expenses" ${billingType==='Expenses'?'selected':''}>Expenses</option>
-                    </select>
-                    ${billingType !== 'Expenses' ? `Rate: $<input type="number" class="rate-box" value="${savedRate}" style="width:70px; padding:4px;" onchange="calculateInvoices()">` : ''}
+                    Rate: $<input type="number" class="rate-box" value="${savedRate}" style="width:70px; padding:4px;" onchange="calculateInvoices()">
                     <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">✕</button>
                 </div>
             </div>
             <div id="content-${id}">
                 <table class="grid-table" id="table-${id}">
-                    ${buildTableHTML(billingType)}
+                    <thead><tr>
+                        <th style="width:160px;">Date</th>
+                        <th>Description</th>
+                        <th style="width:100px;">Time</th>
+                        <th style="width:130px;">Amount</th>
+                    </tr></thead>
                     <tbody id="body-${id}"></tbody>
-                    ${buildSubtotalHTML(billingType, id)}
+                    <tr style="background:#fff9c4; font-weight:bold;">
+                        <td colspan="2" style="text-align:right; padding:12px;">Subtotal</td>
+                        <td id="hrs-${id}" style="text-align:center;">0.00</td>
+                        <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
+                    </tr>
                 </table>
-                ${billingType === 'Expenses' ? `
-                <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;">
-                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label>
-                    <input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;">
-                    <span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>
-                </div>` : ''}
                 <div style="margin-top:10px;" id="rowbtns-${id}">
                     <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
@@ -1910,8 +1894,91 @@
             </div>`;
 
         document.getElementById('invoiceContainer').appendChild(sectionDiv);
+        _applyKickNote(sectionDiv, id, saved);
 
-        // Show saved kickback note if present (law team view)
+        if (saved && saved.rows) {
+            saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
+        } else {
+            addInvoiceRow(id);
+        }
+    }
+
+    function createNewExpensesSection(saved) {
+        // Expenses section (units × per cost, with Expense Type dropdown)
+        const id = saved ? saved.id : Date.now();
+        const caseName = saved ? (saved.caseName || saved.personName || '') : (document.getElementById('caseNameInput') ? document.getElementById('caseNameInput').value : '');
+
+        if (!saved && document.getElementById('caseNameInput')) document.getElementById('caseNameInput').value = '';
+
+        const sectionDiv = document.createElement('div');
+        sectionDiv.id = 'sec-' + id;
+        sectionDiv.dataset.cat = 'Expenses';
+        sectionDiv.dataset.billingType = 'Expenses';
+        sectionDiv.style.marginBottom = '30px';
+
+        sectionDiv.innerHTML = `
+            <div class="section-bar">
+                <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
+                    <strong>Expenses</strong>
+                    <span style="font-size:12px; color:#555;">Case Name:</span>
+                    <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
+                </span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">✕</button>
+                </div>
+            </div>
+            <div id="content-${id}">
+                <table class="grid-table" id="table-${id}">
+                    <thead><tr>
+                        <th style="width:160px;">Date</th>
+                        <th>Description</th>
+                        <th style="width:120px;">Expense Type</th>
+                        <th style="width:70px;">Units</th>
+                        <th style="width:100px;">Unit Price</th>
+                        <th style="width:110px;">Total</th>
+                    </tr></thead>
+                    <tbody id="body-${id}"></tbody>
+                    <tr style="background:#fff9c4; font-weight:bold;">
+                        <td colspan="4" style="text-align:right; padding:12px;">Total</td>
+                        <td></td>
+                        <td id="val-${id}" style="text-align:right; padding-right:15px;">$0.00</td>
+                    </tr>
+                </table>
+                <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;">
+                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label>
+                    <input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;">
+                    <span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>
+                </div>
+                <div style="margin-top:10px;" id="rowbtns-${id}">
+                    <button class="btn btn-save" style="font-size:11px;" onclick="addInvoiceRow('${id}')">+ Add Row</button>
+                    <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
+                </div>
+            <div id="kicknotes-${id}" class="kickback-notes-panel" style="display:none; margin-top:14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px;">
+                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">📝 Finance Notes for this section:</label>
+                <textarea id="kicknote-${id}" class="kicknote-field" placeholder="Enter corrections needed for this section..." style="width:100%; min-height:70px; padding:8px; border:1px solid #ffc107; border-radius:4px; font-size:13px; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+            </div>`;
+
+        document.getElementById('invoiceContainer').appendChild(sectionDiv);
+        _applyKickNote(sectionDiv, id, saved);
+
+        const pdfInput = document.getElementById('pdf-upload-' + id);
+        if (pdfInput) {
+            pdfInput.addEventListener('change', function() {
+                const countEl = document.getElementById('pdf-count-' + id);
+                if (countEl) countEl.innerText = this.files.length > 0 ? this.files.length + ' file(s) selected' : '';
+            });
+        }
+
+        if (saved && saved.rows) {
+            saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
+        } else {
+            addInvoiceRow(id);
+        }
+    }
+
+    function _applyKickNote(sectionDiv, id, saved) {
         if (saved && saved.kickNote) {
             const notesPanel = document.getElementById('kicknotes-' + id);
             const noteTA = document.getElementById('kicknote-' + id);
@@ -1929,35 +1996,8 @@
                 noteTA.style.cursor = 'default';
             }
         }
-
-        // Wire up billing type change
-        const btSelect = document.getElementById('billingType-' + id);
-        if (btSelect) {
-            btSelect.addEventListener('change', function() {
-                const newBt = this.value;
-                sectionDiv.dataset.billingType = newBt;
-                sectionDiv.dataset.cat = newBt === 'Expenses' ? 'Expenses' : serviceOwner;
-                rebuildSectionForBillingType(id, newBt);
-            });
-        }
-
-        // Wire up PDF file count display if Expenses
-        if (billingType === 'Expenses') {
-            const pdfInput = document.getElementById('pdf-upload-' + id);
-            if (pdfInput) {
-                pdfInput.addEventListener('change', function() {
-                    const countEl = document.getElementById('pdf-count-' + id);
-                    if (countEl) countEl.innerText = this.files.length > 0 ? this.files.length + ' file(s) selected' : '';
-                });
-            }
-        }
-
-        if (saved && saved.rows) {
-            saved.rows.forEach(function(r) { addInvoiceRow(id, r); });
-        } else {
-            addInvoiceRow(id);
-        }
     }
+
 
     function rebuildSectionForBillingType(id, billingType) {
         const sectionEl = document.getElementById('sec-' + id);
@@ -2060,11 +2100,8 @@
                 <td>
                     <select class="exp-type" onchange="calculateInvoices()" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:3px;">
                         <option value="">-- Type --</option>
-                        <option value="Hotel" ${expType==='Hotel'?'selected':''}>Hotel</option>
-                        <option value="Rental" ${expType==='Rental'?'selected':''}>Rental</option>
-                        <option value="Meals" ${expType==='Meals'?'selected':''}>Meals</option>
-                        <option value="Copies" ${expType==='Copies'?'selected':''}>Copies</option>
-                        <option value="Other" ${expType==='Other'?'selected':''}>Other</option>
+                        <option value="Travel" ${expType==='Travel'?'selected':''}>Travel</option>
+                        <option value="Non-Travel" ${expType==='Non-Travel'?'selected':''}>Non-Travel</option>
                     </select>
                 </td>
                 <td>
@@ -2217,18 +2254,18 @@
                     time: rowElement.cells[2].querySelector('input').value
                 };
             });
-            // Read new fields
-            const btSelect = document.getElementById('billingType-' + sectionElement.id.replace('sec-', ''));
-            const billingTypeSaved = sectionElement.dataset.billingType || (btSelect ? btSelect.value : 'Training');
-            const serviceOwnerSaved = sectionElement.dataset.cat || 'Attorney';
+            // Read section fields
+            const billingTypeSaved = sectionElement.dataset.billingType || 'Standard';
+            const serviceTypeSaved = sectionElement.dataset.cat || '';
             const caseNameSaved = personNameInput ? personNameInput.value : '';
             return {
                 id: sectionElement.id.replace('sec-', ''),
-                serviceOwner: serviceOwnerSaved,
+                serviceType: serviceTypeSaved,
+                serviceOwner: serviceTypeSaved,  // backward compat
                 caseName: caseNameSaved,
                 billingType: billingTypeSaved,
-                category: billingTypeSaved,     // backward compat
-                personName: caseNameSaved,       // backward compat
+                category: billingTypeSaved,      // backward compat
+                personName: caseNameSaved,        // backward compat
                 rate: rateInput ? rateInput.value : 0,
                 rows: rowsArray,
                 kickNote: (function() { const ta = sectionElement.querySelector('.kicknote-field'); return ta ? ta.value : ''; })()
@@ -2287,7 +2324,7 @@
             document.getElementById('address3').value = data.address3 || "";
             document.getElementById('invNum').value = data.inv_num || "";
             document.getElementById('invoiceContainer').innerHTML = "";
-            data.sections.forEach(function(sectionData) { createNewInvoiceSection(sectionData); });
+            data.sections.forEach(function(sectionData) { (sectionData.billingType==='Expenses'||sectionData.category==='Expenses') ? createNewExpensesSection(sectionData) : createNewInvoiceSection(sectionData); });
             
             if (data.status === 'Sent Back') {
                 document.getElementById('btnSync').style.display = "none";
@@ -2339,7 +2376,7 @@
             document.getElementById('address3').value = data.address3 || "";
             document.getElementById('invNum').value = data.inv_num || "";
             document.getElementById('invoiceContainer').innerHTML = "";
-            data.sections.forEach(function(sectionData) { createNewInvoiceSection(sectionData); });
+            data.sections.forEach(function(sectionData) { (sectionData.billingType==='Expenses'||sectionData.category==='Expenses') ? createNewExpensesSection(sectionData) : createNewInvoiceSection(sectionData); });
             calculateInvoices();
         }
     }
