@@ -832,7 +832,7 @@
     <div id="assistanceModal">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h2 style="margin:0;">User Assistance</h2>
-            <button class="btn btn-nav-red" style="padding:4px 8px;" onclick="closeAssistance()">✕</button>
+            <button class="btn btn-nav-red" style="padding:4px 8px;" onclick="closeAssistance()">â</button>
         </div>
         <div class="assistance-search">
             <p style="font-size:13px; color:#666;">Search by Lawyer Name or Access Key to recover info.</p>
@@ -863,7 +863,7 @@
                 <div id="keyResult">
                     <div id="keyResultMsg"></div>
                     <div class="revealed-key" id="revealedKey"></div>
-                    <button class="btn-use-key" id="btnUseKey" onclick="useRecoveredKey()" style="display:none;">Use This Key to Login →</button>
+                    <button class="btn-use-key" id="btnUseKey" onclick="useRecoveredKey()" style="display:none;">Use This Key to Login â</button>
                 </div>
             </div>
             <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
@@ -925,7 +925,7 @@
 
     <!-- INVOICE VIEW -->
     <div id="invoiceView">
-        <button onclick="navigateBackToDashboard()" id="backBtn" style="display:none; margin-bottom:20px;">⬅ Back to Dashboard</button>
+        <button onclick="navigateBackToDashboard()" id="backBtn" style="display:none; margin-bottom:20px;">â¬ Back to Dashboard</button>
         
         <div class="month-nav">
             <span class="nav-arrow" id="userPrev" onclick="changeActiveMonth(-1)">&#10094;</span>
@@ -957,14 +957,14 @@
             <div>
                 <label style="display:block; font-weight:700; font-size:13px; margin-bottom:6px; color:#2c3e50;">Service Type:</label>
                 <select id="serviceTypeSelector" style="padding:8px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
-                    <option value="Operations Director">Operations Director</option>
-                    <option value="Finance Director">Finance Director</option>
-                    <option value="Program Director">Program Director</option>
-                    <option value="Finance/Program Coordinator/Clerk">Finance/Program Coordinator/Clerk</option>
-                    <option value="Attorney">Attorney</option>
                     <option value="Associate Attorney">Associate Attorney</option>
-                    <option value="Paralegal">Paralegal</option>
+                    <option value="Attorney">Attorney</option>
                     <option value="Expert">Expert</option>
+                    <option value="Finance Director">Finance Director</option>
+                    <option value="Finance/Program Coordinator/Clerk">Finance/Program Coordinator/Clerk</option>
+                    <option value="Operations Director">Operations Director</option>
+                    <option value="Paralegal">Paralegal</option>
+                    <option value="Program Director">Program Director</option>
                     <option value="Other">Other</option>
                 </select>
             </div>
@@ -986,7 +986,7 @@
             
             <div id="adminActions" style="display:none; gap:12px; flex-wrap:wrap; align-items:center;">
                 <button class="btn btn-kick" id="btnStartKickback" onclick="startKickback()">Kick Back</button>
-                <button class="btn btn-kick" id="btnSendBack" style="display:none; background:#b71c1c;" onclick="sendBackWithNotes()">✉️ Send Back to Law Team</button>
+                <button class="btn btn-kick" id="btnSendBack" style="display:none; background:#b71c1c;" onclick="sendBackWithNotes()">âï¸ Send Back to Law Team</button>
                 <button class="btn" id="btnCancelKickback" style="display:none; background:#888; color:white;" onclick="cancelKickback()">Cancel</button>
                 <button class="btn btn-ready" id="btnApprove" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve for Payment</button>
             </div>
@@ -1005,10 +1005,10 @@
 
         <div class="vault-header">
             <div>
-                <h1>📊 Data Vault</h1>
+                <h1>ð Data Vault</h1>
                 <p>Financial intelligence &amp; reporting for the selected time period</p>
             </div>
-            <button class="btn btn-nav-grey" onclick="closeDataVault()">← Back to Dashboard</button>
+            <button class="btn btn-nav-grey" onclick="closeDataVault()">â Back to Dashboard</button>
         </div>
 
         <!-- TIME PERIOD TOGGLE -->
@@ -1031,10 +1031,10 @@
             </div>
             <div class="period-selectors" id="quarterSelector" style="display:none;">
                 <select id="vaultQuarterSelect">
-                    <option value="1">Q1 (Jan–Mar)</option>
-                    <option value="2">Q2 (Apr–Jun)</option>
-                    <option value="3">Q3 (Jul–Sep)</option>
-                    <option value="4">Q4 (Oct–Dec)</option>
+                    <option value="1">Q1 (JanâMar)</option>
+                    <option value="2">Q2 (AprâJun)</option>
+                    <option value="3">Q3 (JulâSep)</option>
+                    <option value="4">Q4 (OctâDec)</option>
                 </select>
             </div>
             <div class="period-selectors">
@@ -1183,7 +1183,7 @@
             if (match) {
                 recoveredKey = match.user_code;
                 resultDiv.className = "found";
-                msgDiv.innerText = "✓ Account found for " + match.payee;
+                msgDiv.innerText = "â Account found for " + match.payee;
                 keyDiv.innerText = match.user_code;
                 useBtn.style.display = "block";
             } else {
@@ -1350,19 +1350,31 @@
 
         const prefix = months[currentInvoiceDate.getMonth()] + "_" + currentInvoiceDate.getFullYear();
 
+        // Build date range for the current viewing month to also capture cross-month submissions
+        const viewStart = new Date(currentInvoiceDate.getFullYear(), currentInvoiceDate.getMonth(), 1).toISOString();
+        const viewEnd   = new Date(currentInvoiceDate.getFullYear(), currentInvoiceDate.getMonth() + 1, 1).toISOString();
+
         const { data } = await supabaseClient
             .from('invoices')
             .select('*')
-            .like('month_year', prefix + "%")
             .eq('submitted', true)
+            .or('month_year.like.' + prefix + '%,and(submitted_at.gte.' + viewStart + ',submitted_at.lt.' + viewEnd + ')')
             .order('updated_at', { ascending: false });
         
+        // Deduplicate in case an invoice matches both month_year and submitted_at filters
+        const seen = {};
+        const uniqueData = (data || []).filter(function(inv) {
+            if (seen[inv.month_year]) return false;
+            seen[inv.month_year] = true;
+            return true;
+        });
+
         const pendingList = document.getElementById('pendingList');
         const readyList = document.getElementById('readyList');
         const paidList = document.getElementById('paidList');
         pendingList.innerHTML = ""; readyList.innerHTML = ""; paidList.innerHTML = "";
 
-        data.forEach(function(inv) {
+        uniqueData.forEach(function(inv) {
             const totalDue = calcInvoiceTotal(inv);
             let statusActionHTML = "";
             if (inv.status === 'Ready for Payment') {
@@ -1383,7 +1395,7 @@
                 // Show remaining balance for paid archive
                 const paidBalance = typeof inv.balance_remaining === 'number' ? inv.balance_remaining : (inv.balance_remaining != null ? parseFloat(inv.balance_remaining) : totalDue);
                 const paidBalanceStr = '$' + paidBalance.toFixed(2);
-                const paidStatusLabel = paidBalance <= 0 ? '<span style="color:#27ae60;font-weight:700;">Paid in Full</span>' : '<span style="color:#e67e22;font-weight:700;">Partial — Balance: ' + paidBalanceStr + '</span>';
+                const paidStatusLabel = paidBalance <= 0 ? '<span style="color:#27ae60;font-weight:700;">Paid in Full</span>' : '<span style="color:#e67e22;font-weight:700;">Partial â Balance: ' + paidBalanceStr + '</span>';
                 const paidRowHTML = `
                 <tr class="invoice-row">
                     <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
@@ -1413,7 +1425,7 @@
             panel.style.background = '#fff3cd';
             panel.style.borderColor = '#ffc107';
             const lbl = panel.querySelector('label');
-            if (lbl) { lbl.innerText = '📝 Finance Notes for this section:'; lbl.style.color = '#856404'; }
+            if (lbl) { lbl.innerText = 'ð Finance Notes for this section:'; lbl.style.color = '#856404'; }
             const ta = panel.querySelector('textarea');
             if (ta) { ta.readOnly = false; ta.style.background = ''; ta.style.color = ''; ta.style.fontWeight = ''; ta.style.cursor = ''; }
         });
@@ -1502,7 +1514,7 @@
             const startMonth = (q - 1) * 3;
             for (let i = 0; i < 3; i++) prefixes.push(months[startMonth + i] + "_" + year);
         } else {
-            // Year — all 12 months up to current month if same year
+            // Year â all 12 months up to current month if same year
             const currentYear = new Date().getFullYear();
             const endMonth = (year === currentYear) ? new Date().getMonth() : 11;
             for (let i = 0; i <= endMonth; i++) prefixes.push(months[i] + "_" + year);
@@ -1526,7 +1538,7 @@
 
     async function loadVaultData() {
         const contentDiv = document.getElementById('vaultContent');
-        contentDiv.innerHTML = '<div class="vault-loading">⏳ Loading financial data...</div>';
+        contentDiv.innerHTML = '<div class="vault-loading">â³ Loading financial data...</div>';
 
         const prefixes = getMonthPrefixes();
 
@@ -1587,7 +1599,7 @@
         const label = getPeriodLabel();
         const contentDiv = document.getElementById('vaultContent');
 
-        // ── 1. COMPUTE KPIs ──
+        // ââ 1. COMPUTE KPIs ââ
         let pendingLiability = 0, approvedPayout = 0, totalPaid = 0;
 
         data.forEach(function(inv) {
@@ -1602,9 +1614,9 @@
             }
         });
 
-        // ── 2. SPEND BY CATEGORY ──
-        // ── 2. SPEND BY SERVICE TYPE ──
-        const serviceTypes = ['Operations Director','Finance Director','Program Director','Finance/Program Coordinator/Clerk','Attorney','Associate Attorney','Paralegal','Expert','Other','Expenses'];
+        // ââ 2. SPEND BY CATEGORY ââ
+        // ââ 2. SPEND BY SERVICE TYPE ââ
+        const serviceTypes = ['Associate Attorney','Attorney','Expert','Finance Director','Finance/Program Coordinator/Clerk','Operations Director','Paralegal','Program Director','Other','Expenses'];
         const catTotals = {};
         const catHours = {};
         serviceTypes.forEach(function(c) { catTotals[c] = 0; catHours[c] = 0; });
@@ -1637,7 +1649,7 @@
 
         const maxCatVal = Math.max(...Object.values(catTotals), 1);
 
-        // ── 3. PAYEE LEDGER ──
+        // ââ 3. PAYEE LEDGER ââ
         const payeeMap = {};
         data.forEach(function(inv) {
             const key = inv.user_code;
@@ -1681,11 +1693,11 @@
         }
 
         function sortIcon(col) {
-            if (ledgerSortCol !== col) return '<span class="sort-icon">⇅</span>';
-            return '<span class="sort-icon">' + (ledgerSortDir === 1 ? '↑' : '↓') + '</span>';
+            if (ledgerSortCol !== col) return '<span class="sort-icon">â</span>';
+            return '<span class="sort-icon">' + (ledgerSortDir === 1 ? 'â' : 'â') + '</span>';
         }
 
-        // ── RENDER ──
+        // ââ RENDER ââ
         contentDiv.innerHTML = `
 
             <!-- KPI CARDS -->
@@ -1698,12 +1710,12 @@
                 <div class="kpi-card approved">
                     <div class="kpi-label">Approved for Payout</div>
                     <div class="kpi-value">$${approvedPayout.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-                    <div class="kpi-sub">Ready for Payment — checks needed</div>
+                    <div class="kpi-sub">Ready for Payment â checks needed</div>
                 </div>
                 <div class="kpi-card paid">
                     <div class="kpi-label">Total Paid Out</div>
                     <div class="kpi-value">$${totalPaid.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-                    <div class="kpi-sub">Confirmed paid — ${label}</div>
+                    <div class="kpi-sub">Confirmed paid â ${label}</div>
                 </div>
             </div>
 
@@ -1734,8 +1746,8 @@
             <!-- PAYEE LEDGER -->
             <div class="vault-section">
                 <div class="vault-section-header">
-                    <h3>Payee Summary — Vendor Ledger</h3>
-                    <span class="section-meta">${payeeRows.length} payee(s) — click column headers to sort</span>
+                    <h3>Payee Summary â Vendor Ledger</h3>
+                    <span class="section-meta">${payeeRows.length} payee(s) â click column headers to sort</span>
                 </div>
                 <div class="vault-section-body" style="padding:0;">
                     <table class="ledger-table">
@@ -1757,7 +1769,7 @@
                                         <td>${p.hours.toFixed(2)}</td>
                                         <td><strong>$${p.total.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></td>
                                         <td><div class="status-pills">${pillForStatus(p.status)}</div></td>
-                                        <td><button class="btn-jump-invoice" onclick="jumpToInvoice('${p.monthYear}')">View →</button></td>
+                                        <td><button class="btn-jump-invoice" onclick="jumpToInvoice('${p.monthYear}')">View â</button></td>
                                     </tr>`;
                             }).join('')}
                         </tbody>
@@ -1778,7 +1790,7 @@
                             Columns: Month, Payee, Category, Description, Date, Hours, Rate, Amount, Status.
                         </div>
                         <button class="btn-master-export" onclick="masterExport()">
-                            ⬇ Master Export — ${label}
+                            â¬ Master Export â ${label}
                         </button>
                     </div>
                 </div>
@@ -1857,7 +1869,7 @@
        ===================================================== */
 
     function createNewInvoiceSection(saved) {
-        // Standard billing section (rate × hours)
+        // Standard billing section (rate Ã hours)
         const id          = saved ? saved.id : Date.now();
         const serviceType = saved ? (saved.serviceType || saved.serviceOwner || saved.category || 'Attorney') : document.getElementById('serviceTypeSelector').value;
         const caseName    = saved ? (saved.caseName || saved.personName || '') : (document.getElementById('caseNameInput') ? document.getElementById('caseNameInput').value : '');
@@ -1875,14 +1887,14 @@
         sectionDiv.innerHTML = `
             <div class="section-bar">
                 <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">â¼</span>
                     <strong>${serviceType}</strong>
                     <span style="font-size:12px; color:#555;">Case Name:</span>
                     <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
                 </span>
                 <div style="display:flex; align-items:center; gap:10px;">
                     Rate: $<input type="number" class="rate-box" value="${savedRate}" style="width:70px; padding:4px;" onchange="calculateInvoices()">
-                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">✕</button>
+                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">â</button>
                 </div>
             </div>
             <div id="content-${id}">
@@ -1905,7 +1917,7 @@
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
                 </div>
             <div id="kicknotes-${id}" class="kickback-notes-panel" style="display:none; margin-top:14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px;">
-                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">📝 Finance Notes for this section:</label>
+                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">ð Finance Notes for this section:</label>
                 <textarea id="kicknote-${id}" class="kicknote-field" placeholder="Enter corrections needed for this section..." style="width:100%; min-height:70px; padding:8px; border:1px solid #ffc107; border-radius:4px; font-size:13px; resize:vertical; box-sizing:border-box;"></textarea>
             </div>
             </div>`;
@@ -1921,7 +1933,7 @@
     }
 
     function createNewExpensesSection(saved) {
-        // Expenses section (units × per cost, with Expense Type dropdown)
+        // Expenses section (units Ã per cost, with Expense Type dropdown)
         const id = saved ? saved.id : Date.now();
         const caseName = saved ? (saved.caseName || saved.personName || '') : (document.getElementById('caseNameInput') ? document.getElementById('caseNameInput').value : '');
 
@@ -1936,13 +1948,13 @@
         sectionDiv.innerHTML = `
             <div class="section-bar">
                 <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">â¼</span>
                     <strong>Expenses</strong>
                     <span style="font-size:12px; color:#555;">Case Name:</span>
                     <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
                 </span>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">✕</button>
+                    <button style="color:#cc0000; background:none; border:none; cursor:pointer; font-weight:900; font-size:18px; line-height:1;" onclick="this.closest('[id^=sec-]').remove(); calculateInvoices()">â</button>
                 </div>
             </div>
             <div id="content-${id}">
@@ -1963,7 +1975,7 @@
                     </tr>
                 </table>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;">
-                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label>
+                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">ð Proof of Payment:</label>
                     <input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;">
                     <span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>
                 </div>
@@ -1972,7 +1984,7 @@
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
                 </div>
             <div id="kicknotes-${id}" class="kickback-notes-panel" style="display:none; margin-top:14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px;">
-                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">📝 Finance Notes for this section:</label>
+                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">ð Finance Notes for this section:</label>
                 <textarea id="kicknote-${id}" class="kicknote-field" placeholder="Enter corrections needed for this section..." style="width:100%; min-height:70px; padding:8px; border:1px solid #ffc107; border-radius:4px; font-size:13px; resize:vertical; box-sizing:border-box;"></textarea>
             </div>
             </div>`;
@@ -2013,7 +2025,7 @@
                 notesPanel.style.display = 'block';
                 notesPanel.style.background = '#fde8e8';
                 notesPanel.style.borderColor = '#e74c3c';
-                notesPanel.querySelector('label').innerText = '⚠️ Finance Correction Note:';
+                notesPanel.querySelector('label').innerText = 'â ï¸ Finance Correction Note:';
                 notesPanel.querySelector('label').style.color = '#c0392b';
                 noteTA.value = saved.kickNote;
                 noteTA.readOnly = true;
@@ -2086,7 +2098,7 @@
                 if (!existingPdf) {
                     const pdfDiv = document.createElement('div');
                     pdfDiv.style.cssText = 'display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;';
-                    pdfDiv.innerHTML = `<label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label><input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;"><span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>`;
+                    pdfDiv.innerHTML = `<label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">ð Proof of Payment:</label><input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;"><span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>`;
                     const rowBtns = document.getElementById('rowbtns-' + id);
                     if (rowBtns) contentDiv.insertBefore(pdfDiv, rowBtns);
                     const pdfInput = document.getElementById('pdf-upload-' + id);
@@ -2271,7 +2283,7 @@
     /* --- DATA MANAGEMENT --- */
     async function syncInvoiceData(final) {
         const sectionsArray = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(sectionElement) {
-            const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0];
+            const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('â¼ ', '').split(' ')[0];
             const personNameInput = sectionElement.querySelector('.sec-name');
             const rateInput = sectionElement.querySelector('.rate-box');
             const isExpSect = (sectionElement.dataset.billingType === 'Expenses');
@@ -2453,7 +2465,7 @@
         ];
         
         document.querySelectorAll('[id^="sec-"]').forEach(function(sectionElement) {
-            let headerText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '');
+            let headerText = sectionElement.querySelector('.section-bar span').innerText.replace('â¼ ', '');
             let rateValue = sectionElement.querySelector('.rate-box').value;
             excelData.push([headerText.toUpperCase(), "", "", "Rate:", "$" + rateValue]);
             excelData.push(["Date", "Desc", "Time", "Amount"]);
@@ -2545,7 +2557,7 @@
             list.innerHTML = '';
             // "All payees" option
             const allOpt = document.createElement('div');
-            allOpt.innerText = '— All Payees —';
+            allOpt.innerText = 'â All Payees â';
             allOpt.style.cssText = 'padding:8px 12px; cursor:pointer; font-style:italic; color:#888; border-bottom:1px solid #eee;';
             allOpt.onmouseover = function() { this.style.background = '#f0f0f0'; };
             allOpt.onmouseout = function() { this.style.background = ''; };
@@ -2617,7 +2629,7 @@
 
 
 
-    // ── PAYMENT MODAL ──────────────────────────────────────────────────────────
+    // ââ PAYMENT MODAL ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     const _sectionPdfs = new Map(); // stores base64 PDF attachments per section id
     let _pmtInvoiceId = null;
     let _pmtTotalDue  = 0;
@@ -2674,7 +2686,7 @@
         loadFinanceView();
     }
 
-    // ── PDF RECEIPT GENERATOR ──────────────────────────────────────────────────
+    // ââ PDF RECEIPT GENERATOR ââââââââââââââââââââââââââââââââââââââââââââââââââ
     function generateReceiptPDF(inv, amountPaid, remaining) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -2685,7 +2697,7 @@
         const COL_W = R - L;
         let y = 50;
 
-        // ── helpers ──
+        // ââ helpers ââ
         function addPage() {
             doc.addPage();
             y = 50;
@@ -2706,21 +2718,19 @@
             doc.setFont('helvetica','bold');
             doc.setFontSize(13);
             doc.setTextColor(255,255,255);
-            doc.text('PAYMENT RECEIPT', PW/2, 23, { align:'center' });
-            doc.setFontSize(9);
-            doc.setTextColor(180,200,220);
-            doc.text('Legal Invoice Portal', PW/2, 33, { align:'center' });
+            doc.text('Invoice', PW/2, 23, { align:'center' });
+            // subtitle removed
         }
 
-        // ── PAGE 1 HEADER ──
+        // ââ PAGE 1 HEADER ââ
         drawPageHeader();
         y = 60;
 
         // Org/Payee info block
         doc.setFillColor(248, 249, 250);
-        doc.roundedRect(L, y, COL_W, 110, 4, 4, 'F');
+        doc.roundedRect(L, y, COL_W, 70, 4, 4, 'F');
         doc.setDrawColor(220,220,220);
-        doc.roundedRect(L, y, COL_W, 110, 4, 4, 'S');
+        doc.roundedRect(L, y, COL_W, 70, 4, 4, 'S');
 
         doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(44,62,80);
         doc.text(inv.payee || 'Payee', L+14, y+20);
@@ -2742,27 +2752,16 @@
 
         const _submittedDate = inv.submitted_at
             ? new Date(inv.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-            : (inv.updated_at ? new Date(inv.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
-        const _paidDate = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-        const _statusLabel = remaining === 0 ? 'Paid in Full' : 'Partial Payment';
-        const _statusColor = remaining === 0 ? [39,174,96] : [230,126,34];
+            : (inv.updated_at ? new Date(inv.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'â');
 
         const rx = PW - 230;
         doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(44,62,80);
-        doc.text('Invoice ID:',       rx, y+20); doc.setFont('helvetica','normal'); doc.text(_invoiceId, rx+85, y+20);
+        doc.text('Invoice #:',        rx, y+20); doc.setFont('helvetica','normal'); doc.text(inv.inv_num || 'â', rx+85, y+20);
         doc.setFont('helvetica','bold');
-        doc.text('Invoice #:',        rx, y+33); doc.setFont('helvetica','normal'); doc.text(inv.inv_num || '—', rx+85, y+33);
-        doc.setFont('helvetica','bold');
-        doc.text('Date Submitted:',   rx, y+46); doc.setFont('helvetica','normal'); doc.text(_submittedDate, rx+85, y+46);
-        doc.setFont('helvetica','bold');
-        doc.text('Date Paid:',        rx, y+59); doc.setFont('helvetica','normal'); doc.setTextColor(44,62,80); doc.text(_paidDate, rx+85, y+59);
-        doc.setFont('helvetica','bold'); doc.setTextColor(44,62,80);
-        doc.text('Status:',           rx, y+72);
-        doc.setTextColor(..._statusColor); doc.setFont('helvetica','bold'); doc.text(_statusLabel, rx+85, y+72);
+        doc.text('Date Submitted:',   rx, y+33); doc.setFont('helvetica','normal'); doc.text(_submittedDate, rx+85, y+33);
+        y += 86;
 
-        y += 126;
-
-        // ── SECTIONS ──
+        // ââ SECTIONS ââ
         const sections = inv.sections || [];
         sections.forEach(function(sec, secIdx) {
             const isExp  = sec.billingType === 'Expenses' || sec.category === 'Expenses';
@@ -2815,7 +2814,7 @@
                 doc.rect(L, y, COL_W, 16, 'F');
                 doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
 
-                const dateStr = row.date ? new Date(row.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+                const dateStr = row.date ? new Date(row.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'â';
                 // Truncate description
                 const descFull = row.desc || '';
                 const descShort = descFull.length > 45 ? descFull.substring(0,42) + '...' : descFull;
@@ -2827,7 +2826,7 @@
                     secTotal += rowTotal;
                     doc.text(dateStr,               L+6,   y+11);
                     doc.text(descShort,             L+82,  y+11);
-                    doc.text(row.expType || '—',    L+272, y+11);
+                    doc.text(row.expType || 'â',    L+272, y+11);
                     doc.text(units.toFixed(2),      L+354, y+11, { align:'right' });
                     doc.text(fmtMoney(perCost),     L+414, y+11, { align:'right' });
                     doc.text(fmtMoney(rowTotal),    R-6,   y+11, { align:'right' });
@@ -2859,7 +2858,7 @@
             y += 24;
         });
 
-        // ── PAYMENT SUMMARY FOOTER ──
+        // ââ PAYMENT SUMMARY FOOTER ââ
         checkY(110);
         y += 10;
         hline(y, '#2c3e50');
@@ -2868,13 +2867,11 @@
         const grandTotal = calcInvoiceTotal(inv);
         const summaryData = [
             { label: 'Grand Total Due:', value: fmtMoney(grandTotal), bold: false, color: [44,62,80] },
-            { label: 'Amount Paid:',     value: fmtMoney(amountPaid), bold: true,  color: [39,174,96] },
-            { label: 'Remaining Balance:', value: fmtMoney(remaining), bold: true, color: remaining > 0 ? [231,76,60] : [39,174,96] }
         ];
 
         summaryData.forEach(function(row) {
             checkY(26);
-            doc.setFillColor(row.label === 'Remaining Balance:' ? (remaining > 0 ? 253 : 240) : 248, row.label === 'Remaining Balance:' ? (remaining > 0 ? 235 : 255) : 249, row.label === 'Remaining Balance:' ? (remaining > 0 ? 235 : 240) : 250);
+            doc.setFillColor(248, 249, 250);
             doc.rect(L, y, COL_W, 22, 'F');
             doc.setFont('helvetica', row.bold ? 'bold' : 'normal');
             doc.setFontSize(11);
@@ -2891,10 +2888,10 @@
         y = PH - 36;
         hline(y, '#cccccc');
         doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
-        doc.text('Generated by Legal Invoice Portal  ·  ' + new Date().toLocaleString(), PW/2, y+14, { align:'center' });
+        doc.text('Generated by Legal Invoice Portal  Â·  ' + new Date().toLocaleString(), PW/2, y+14, { align:'center' });
 
         // Save
-        const fileName = 'Receipt_' + _invoiceId + '.pdf';
+        const fileName = 'Invoice_' + _invoiceId + '.pdf';
         doc.save(fileName);
 
         // Download expense PDF attachments alongside receipt
@@ -2920,8 +2917,8 @@
     <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:9999; display:none; align-items:center; justify-content:center;">
         <div style="background:white; border-radius:12px; padding:36px; max-width:480px; width:92%; box-shadow:0 8px 40px rgba(0,0,0,0.25);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; border-bottom:2px solid #2c3e50; padding-bottom:14px;">
-                <h2 style="margin:0; font-size:20px; color:#2c3e50;">💳 Confirm Payment</h2>
-                <button onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#888; line-height:1;">×</button>
+                <h2 style="margin:0; font-size:20px; color:#2c3e50;">ð³ Confirm Payment</h2>
+                <button onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#888; line-height:1;">Ã</button>
             </div>
             <div style="margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:15px;">
@@ -2955,7 +2952,7 @@
             </div>
             <div style="display:flex; gap:12px; justify-content:flex-end;">
                 <button onclick="closePaymentModal()" style="padding:10px 24px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">Cancel</button>
-                <button onclick="confirmPayment()" id="pmtConfirmBtn" style="padding:10px 24px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:700;">✓ Confirm & Generate Receipt</button>
+                <button onclick="confirmPayment()" id="pmtConfirmBtn" style="padding:10px 24px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:700;">â Confirm & Generate Receipt</button>
             </div>
         </div>
     </div>
