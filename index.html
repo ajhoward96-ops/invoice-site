@@ -888,6 +888,7 @@
             <thead>
                 <tr>
                     <th>Payee</th>
+                    <th>Billing Month</th>
                     <th>Date Submitted</th>
                     <th>Amount Due</th>
                     <th style="text-align:center">Status</th>
@@ -900,6 +901,7 @@
         <table class="invoice-list">
             <thead>
                 <tr>
+                <th>Billing Month</th>
                     <th>Payee</th>
                     <th>Date Submitted</th>
                     <th>Amount Due</th>
@@ -912,6 +914,7 @@
         <h3 style="color:#28a745; margin-top: 40px;">3. Paid Archive</h3>
         <table class="invoice-list">
             <thead>
+            <th>Billing Month</th>
                 <tr>
                     <th>Payee</th>
                     <th>Date Submitted</th>
@@ -1059,6 +1062,18 @@
             <span id="payeeFilterLabel" style="font-size:12px; color:#888; font-style:italic;"></span>
         </div>
 
+        <!-- DATE RANGE FILTER -->
+        <div class="period-controls" id="dateRangeFilterBar" style="gap:12px; flex-wrap:wrap;">
+            <label style="font-weight:700; color:#2c3e50;">Filter by Date Range:</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <input type="date" id="vaultDateStart" style="padding:6px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
+                <span style="color:#888;">to</span>
+                <input type="date" id="vaultDateEnd" style="padding:6px 10px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
+            </div>
+            <button onclick="applyDateRangeFilter()" style="padding:6px 14px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600;">Apply</button>
+            <button onclick="clearDateRangeFilter()" style="padding:6px 14px; background:#e0e0e0; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600;">&#10005; Clear</button>
+            <span id="dateRangeLabel" style="font-size:12px; color:#888; font-style:italic;"></span>
+        </div>
 
         <div id="vaultContent">
             <div class="vault-loading">Select a time period and click <strong>Load Report</strong> to begin.</div>
@@ -1392,11 +1407,14 @@
                 statusActionHTML = inv.status;
             }
 
+            var _bp = (inv.month_year || '').split('_');
+            var _billingLabel = _bp[0] + ' ' + (_bp[1] || '');
             const rowHTML = `
                 <tr class="invoice-row">
                     <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
+                    <td>${_billingLabel}</td>
                     <td>${new Date(inv.updated_at).toLocaleDateString()}</td>
-                    <td>$${totalDue.toFixed(2)}</td>
+                    <td>${totalDue.toFixed(2)}</td>
                     <td class="status-cell">${statusActionHTML}</td>
                 </tr>`;
             
@@ -1405,9 +1423,12 @@
                 const paidBalance = typeof inv.balance_remaining === 'number' ? inv.balance_remaining : (inv.balance_remaining != null ? parseFloat(inv.balance_remaining) : totalDue);
                 const paidBalanceStr = '$' + paidBalance.toFixed(2);
                 const paidStatusLabel = paidBalance <= 0 ? '<span style="color:#27ae60;font-weight:700;">Paid in Full</span>' : '<span style="color:#e67e22;font-weight:700;">Partial — Balance: ' + paidBalanceStr + '</span>';
+                var _pbp = (inv.month_year || '').split('_');
+                var _paidBillingLabel = _pbp[0] + ' ' + (_pbp[1] || '');
                 const paidRowHTML = `
                 <tr class="invoice-row">
                     <td onclick="openInvoiceForReview('${inv.month_year}')">${inv.payee || 'Lawyer'}</td>
+                    <td>${_paidBillingLabel}</td>
                     <td>${inv.submitted_at ? new Date(inv.submitted_at).toLocaleDateString() : new Date(inv.updated_at).toLocaleDateString()}</td>
                     <td>${paidBalanceStr}</td>
                     <td class="status-cell">${paidStatusLabel}</td>
@@ -1480,6 +1501,8 @@
 
 
     function navigateBackToDashboard() {
+        var _banner = document.getElementById('billingMonthBanner');
+        if (_banner) _banner.style.display = 'none';
         activeAdminInvoiceId = "";
         document.getElementById('invoiceView').style.display = "none";
         document.getElementById('backBtn').style.display = "none";
@@ -2396,6 +2419,18 @@
             .from('invoices').select('*').eq('month_year', primaryKey).single();
         
         if (data) {
+            // Show billing month banner
+            var _reviewParts = (data.month_year || '').split('_');
+            var _reviewMonth = _reviewParts[0] + ' ' + (_reviewParts[1] || '');
+            var existingBanner = document.getElementById('billingMonthBanner');
+            if (!existingBanner) {
+                existingBanner = document.createElement('div');
+                existingBanner.id = 'billingMonthBanner';
+                existingBanner.style.cssText = 'background:#2c3e50; color:white; padding:10px 20px; border-radius:6px; margin-bottom:15px; font-size:15px; font-weight:600; text-align:center;';
+                document.getElementById('invoiceView').insertBefore(existingBanner, document.getElementById('invoiceView').firstChild);
+            }
+            existingBanner.innerText = 'Billing Month: ' + _reviewMonth;
+            existingBanner.style.display = 'block';
             document.getElementById('payeeName').value = data.payee || "";
             document.getElementById('firmName').value = data.firm || "";
             document.getElementById('address1').value = data.address1 || "";
@@ -2625,6 +2660,60 @@
             const label = document.getElementById('payeeFilterLabel');
             if (label) label.innerText = '';
             if (vaultData) renderVault(vaultData);
+        }
+
+        function applyDateRangeFilter() {
+            var startInput = document.getElementById('vaultDateStart').value;
+            var endInput = document.getElementById('vaultDateEnd').value;
+            var label = document.getElementById('dateRangeLabel');
+            if (!startInput && !endInput) { label.innerText = 'Please select at least one date.'; return; }
+
+            var sourceData = activePayeeFilter ? vaultData.filter(function(inv) { return inv.payee === activePayeeFilter; }) : vaultData;
+
+            // Deep-clone invoices and filter rows by date range
+            var filtered = sourceData.map(function(inv) {
+                var clone = JSON.parse(JSON.stringify(inv));
+                if (clone.sections) {
+                    clone.sections = clone.sections.map(function(sec) {
+                        if (sec.rows) {
+                            sec.rows = sec.rows.filter(function(row) {
+                                if (!row.date) return false;
+                                var d = row.date;
+                                if (startInput && d < startInput) return false;
+                                if (endInput && d > endInput) return false;
+                                return true;
+                            });
+                        }
+                        return sec;
+                    });
+                }
+                return clone;
+            }).filter(function(inv) {
+                // Keep invoice only if it has at least one row after filtering
+                var hasRows = false;
+                if (inv.sections) inv.sections.forEach(function(sec) { if (sec.rows && sec.rows.length > 0) hasRows = true; });
+                return hasRows;
+            });
+
+            var rangeText = '';
+            if (startInput && endInput) rangeText = 'Showing: ' + startInput + ' to ' + endInput;
+            else if (startInput) rangeText = 'Showing: from ' + startInput;
+            else rangeText = 'Showing: through ' + endInput;
+            label.innerText = rangeText + ' (' + filtered.length + ' invoice(s))';
+            renderVault(filtered);
+        }
+
+        function clearDateRangeFilter() {
+            document.getElementById('vaultDateStart').value = '';
+            document.getElementById('vaultDateEnd').value = '';
+            var label = document.getElementById('dateRangeLabel');
+            if (label) label.innerText = '';
+            if (activePayeeFilter) {
+                var filtered = vaultData.filter(function(inv) { return inv.payee === activePayeeFilter; });
+                renderVault(filtered);
+            } else if (vaultData) {
+                renderVault(vaultData);
+            }
         }
 
         // Close payee dropdown when clicking outside
