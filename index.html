@@ -863,7 +863,7 @@
                 <div id="keyResult">
                     <div id="keyResultMsg"></div>
                     <div class="revealed-key" id="revealedKey"></div>
-                    <button class="btn-use-key" id="btnUseKey" onclick="useRecoveredKey()" style="display:none;">Use This Key to Login →</button>
+                    <button class="btn-use-key" id="btnUseKey" onclick="useRecoveredKey()" style="display:none;">Use This Key to Login â</button>
                 </div>
             </div>
             <button class="btn btn-submit" style="width:100%; margin-top:20px;" onclick="handleLogin()">Login to System</button>
@@ -914,9 +914,9 @@
         <h3 style="color:#28a745; margin-top: 40px;">3. Paid Archive</h3>
         <table class="invoice-list">
             <thead>
-            <th>Billing Month</th>
                 <tr>
                     <th>Payee</th>
+                    <th>Billing Month</th>
                     <th>Date Submitted</th>
                     <th>Amount Due</th>
                     <th style="text-align:center">Status</th>
@@ -928,7 +928,7 @@
 
     <!-- INVOICE VIEW -->
     <div id="invoiceView">
-        <button onclick="navigateBackToDashboard()" id="backBtn" style="display:none; margin-bottom:20px;">⬅ Back to Dashboard</button>
+        <button onclick="navigateBackToDashboard()" id="backBtn" style="display:none; margin-bottom:20px;">â¬ Back to Dashboard</button>
         
         <div class="month-nav">
             <span class="nav-arrow" id="userPrev" onclick="changeActiveMonth(-1)">&#10094;</span>
@@ -958,7 +958,7 @@
 
         <div id="sectionAdder" style="background:#f8f9fa; padding:20px; border:1px dashed #ccc; margin-top:20px; border-radius:8px; display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
             <div>
-                <label style="display:block; font-weight:700; font-size:13px; margin-bottom:6px; color:#2c3e50;">Service Type:</label>
+                <label style="display:block; font-weight:700; font-size:13px; margin-bottom:6px; color:#2c3e50;">Provider Type:</label>
                 <select id="serviceTypeSelector" style="padding:8px; border:1px solid #ccc; border-radius:5px; font-size:13px;">
                     <option value="Associate Attorney">Associate Attorney</option>
                     <option value="Attorney">Attorney</option>
@@ -989,7 +989,7 @@
             
             <div id="adminActions" style="display:none; gap:12px; flex-wrap:wrap; align-items:center;">
                 <button class="btn btn-kick" id="btnStartKickback" onclick="startKickback()">Kick Back</button>
-                <button class="btn btn-kick" id="btnSendBack" style="display:none; background:#b71c1c;" onclick="sendBackWithNotes()">✉️ Send Back to Law Team</button>
+                <button class="btn btn-kick" id="btnSendBack" style="display:none; background:#b71c1c;" onclick="sendBackWithNotes()">âï¸ Send Back to Law Team</button>
                 <button class="btn" id="btnCancelKickback" style="display:none; background:#888; color:white;" onclick="cancelKickback()">Cancel</button>
                 <button class="btn btn-ready" id="btnApprove" onclick="updateInvoiceStatus(activeAdminInvoiceId, 'Ready for Payment')">Approve for Payment</button>
             </div>
@@ -1008,10 +1008,10 @@
 
         <div class="vault-header">
             <div>
-                <h1>📊 Data Vault</h1>
+                <h1>ð Data Vault</h1>
                 <p>Financial intelligence &amp; reporting for the selected time period</p>
             </div>
-            <button class="btn btn-nav-grey" onclick="closeDataVault()">← Back to Dashboard</button>
+            <button class="btn btn-nav-grey" onclick="closeDataVault()">â Back to Dashboard</button>
         </div>
 
         <!-- TIME PERIOD TOGGLE -->
@@ -1034,10 +1034,10 @@
             </div>
             <div class="period-selectors" id="quarterSelector" style="display:none;">
                 <select id="vaultQuarterSelect">
-                    <option value="1">Q1 (Jan–Mar)</option>
-                    <option value="2">Q2 (Apr–Jun)</option>
-                    <option value="3">Q3 (Jul–Sep)</option>
-                    <option value="4">Q4 (Oct–Dec)</option>
+                    <option value="1">Q1 (JanâMar)</option>
+                    <option value="2">Q2 (AprâJun)</option>
+                    <option value="3">Q3 (JulâSep)</option>
+                    <option value="4">Q4 (OctâDec)</option>
                 </select>
             </div>
             <div class="period-selectors">
@@ -1108,7 +1108,7 @@
         const currentYear = new Date().getFullYear();
         ['vaultYearSelect'].forEach(function(selId) {
             const sel = document.getElementById(selId);
-            for (let y = currentYear; y >= currentYear - 5; y--) {
+            for (let y = currentYear + 4; y >= currentYear - 5; y--) {
                 const opt = document.createElement('option');
                 opt.value = y;
                 opt.text = y;
@@ -1198,7 +1198,7 @@
             if (match) {
                 recoveredKey = match.user_code;
                 resultDiv.className = "found";
-                msgDiv.innerText = "✓ Account found for " + match.payee;
+                msgDiv.innerText = "â Account found for " + match.payee;
                 keyDiv.innerText = match.user_code;
                 useBtn.style.display = "block";
             } else {
@@ -1300,6 +1300,25 @@
         document.getElementById('helpResultsList').innerHTML = "";
     }
 
+    async function deactivateUserAccount(userCode, payeeName) {
+        try {
+            const { error } = await supabaseClient
+                .from('invoices')
+                .update({ status: 'Deactivated' })
+                .eq('user_code', userCode);
+
+            if (error) {
+                alert('Error deactivating account: ' + error.message);
+            } else {
+                alert('Account for ' + payeeName + ' has been deactivated. All data has been preserved.');
+                closeAssistance();
+                loadFinanceView();
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
     async function searchUsersForHelp() {
         const query = document.getElementById('helpSearchInput').value.trim();
         if (query.length < 2) { document.getElementById('helpResultsList').innerHTML = ""; return; }
@@ -1323,9 +1342,14 @@
                     <small>${lawyer.firm || 'No firm listed'}</small>
                 `;
                 item.onclick = function() {
-                    if (confirm("Open invoice records for " + lawyer.payee + "?")) {
+                    const action = prompt('Account: ' + lawyer.payee + '\n\nChoose an action:\n1 - Open invoice records\n2 - Deactivate account (data preserved)\n\nEnter 1 or 2:');
+                    if (action === '1') {
                         closeAssistance();
                         openInvoiceForReview(lawyer.month_year);
+                    } else if (action === '2') {
+                        if (confirm('Deactivate account for ' + lawyer.payee + '?\n\nThis will disable their access but preserve all data.')) {
+                            deactivateUserAccount(lawyer.user_code, lawyer.payee);
+                        }
                     }
                 };
                 resultsDiv.appendChild(item);
@@ -1422,7 +1446,7 @@
                 // Show remaining balance for paid archive
                 const paidBalance = typeof inv.balance_remaining === 'number' ? inv.balance_remaining : (inv.balance_remaining != null ? parseFloat(inv.balance_remaining) : totalDue);
                 const paidBalanceStr = '$' + paidBalance.toFixed(2);
-                const paidStatusLabel = paidBalance <= 0 ? '<span style="color:#27ae60;font-weight:700;">Paid in Full</span>' : '<span style="color:#e67e22;font-weight:700;">Partial — Balance: ' + paidBalanceStr + '</span>';
+                const paidStatusLabel = paidBalance <= 0 ? '<span style="color:#27ae60;font-weight:700;">Paid in Full</span>' : '<span style="color:#e67e22;font-weight:700;">Partial â Balance: ' + paidBalanceStr + '</span>';
                 var _pbp = (inv.month_year || '').split('_');
                 var _paidBillingLabel = _pbp[0] + ' ' + (_pbp[1] || '');
                 const paidRowHTML = `
@@ -1455,7 +1479,7 @@
             panel.style.background = '#fff3cd';
             panel.style.borderColor = '#ffc107';
             const lbl = panel.querySelector('label');
-            if (lbl) { lbl.innerText = '📝 Finance Notes for this section:'; lbl.style.color = '#856404'; }
+            if (lbl) { lbl.innerText = 'ð Finance Notes for this section:'; lbl.style.color = '#856404'; }
             const ta = panel.querySelector('textarea');
             if (ta) { ta.readOnly = false; ta.style.background = ''; ta.style.color = ''; ta.style.fontWeight = ''; ta.style.cursor = ''; }
         });
@@ -1546,7 +1570,7 @@
             const startMonth = (q - 1) * 3;
             for (let i = 0; i < 3; i++) prefixes.push(months[startMonth + i] + "_" + year);
         } else {
-            // Year — all 12 months up to current month if same year
+            // Year â all 12 months up to current month if same year
             const currentYear = new Date().getFullYear();
             const endMonth = (year === currentYear) ? new Date().getMonth() : 11;
             for (let i = 0; i <= endMonth; i++) prefixes.push(months[i] + "_" + year);
@@ -1570,7 +1594,7 @@
 
     async function loadVaultData() {
         const contentDiv = document.getElementById('vaultContent');
-        contentDiv.innerHTML = '<div class="vault-loading">⏳ Loading financial data...</div>';
+        contentDiv.innerHTML = '<div class="vault-loading">â³ Loading financial data...</div>';
 
         const prefixes = getMonthPrefixes();
 
@@ -1631,7 +1655,7 @@
         const label = getPeriodLabel();
         const contentDiv = document.getElementById('vaultContent');
 
-        // ── 1. COMPUTE KPIs ──
+        // ââ 1. COMPUTE KPIs ââ
         let pendingLiability = 0, approvedPayout = 0, totalPaid = 0;
 
         data.forEach(function(inv) {
@@ -1646,8 +1670,8 @@
             }
         });
 
-        // ── 2. SPEND BY CATEGORY ──
-        // ── 2. SPEND BY SERVICE TYPE ──
+        // ââ 2. SPEND BY CATEGORY ââ
+        // ââ 2. SPEND BY SERVICE TYPE ââ
         const serviceTypes = ['Associate Attorney','Attorney','Expert','Finance Director','Finance/Program Coordinator/Clerk','Operations Director','Paralegal','Program Director','Other','Expenses'];
         const catTotals = {};
         const catHours = {};
@@ -1681,7 +1705,7 @@
 
         const maxCatVal = Math.max(...Object.values(catTotals), 1);
 
-        // ── 3. PAYEE LEDGER ──
+        // ââ 3. PAYEE LEDGER ââ
         const payeeMap = {};
         data.forEach(function(inv) {
             const key = inv.user_code;
@@ -1725,11 +1749,11 @@
         }
 
         function sortIcon(col) {
-            if (ledgerSortCol !== col) return '<span class="sort-icon">⇅</span>';
-            return '<span class="sort-icon">' + (ledgerSortDir === 1 ? '↑' : '↓') + '</span>';
+            if (ledgerSortCol !== col) return '<span class="sort-icon">â</span>';
+            return '<span class="sort-icon">' + (ledgerSortDir === 1 ? 'â' : 'â') + '</span>';
         }
 
-        // ── RENDER ──
+        // ââ RENDER ââ
         contentDiv.innerHTML = `
 
             <!-- KPI CARDS -->
@@ -1742,19 +1766,19 @@
                 <div class="kpi-card approved">
                     <div class="kpi-label">Approved for Payout</div>
                     <div class="kpi-value">$${approvedPayout.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-                    <div class="kpi-sub">Ready for Payment — checks needed</div>
+                    <div class="kpi-sub">Ready for Payment â checks needed</div>
                 </div>
                 <div class="kpi-card paid">
                     <div class="kpi-label">Total Paid Out</div>
                     <div class="kpi-value">$${totalPaid.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-                    <div class="kpi-sub">Confirmed paid — ${label}</div>
+                    <div class="kpi-sub">Confirmed paid â ${label}</div>
                 </div>
             </div>
 
             <!-- SPEND BY CATEGORY -->
             <div class="vault-section">
                 <div class="vault-section-header">
-                    <h3>Spend by Service Type</h3>
+                    <h3>Spend by Provider Type</h3>
                     <span class="section-meta">${label}</span>
                 </div>
                 <div class="vault-section-body">
@@ -1778,8 +1802,8 @@
             <!-- PAYEE LEDGER -->
             <div class="vault-section">
                 <div class="vault-section-header">
-                    <h3>Payee Summary — Vendor Ledger</h3>
-                    <span class="section-meta">${payeeRows.length} payee(s) — click column headers to sort</span>
+                    <h3>Payee Summary â Vendor Ledger</h3>
+                    <span class="section-meta">${payeeRows.length} payee(s) â click column headers to sort</span>
                 </div>
                 <div class="vault-section-body" style="padding:0;">
                     <table class="ledger-table">
@@ -1801,7 +1825,7 @@
                                         <td>${p.hours.toFixed(2)}</td>
                                         <td><strong>$${p.total.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></td>
                                         <td><div class="status-pills">${pillForStatus(p.status)}</div></td>
-                                        <td><button class="btn-jump-invoice" onclick="jumpToInvoice('${p.monthYear}')">View →</button></td>
+                                        <td><button class="btn-jump-invoice" onclick="jumpToInvoice('${p.monthYear}')">View â</button></td>
                                     </tr>`;
                             }).join('')}
                         </tbody>
@@ -1822,7 +1846,7 @@
                             Columns: Month, Payee, Category, Description, Date, Hours, Rate, Amount, Status.
                         </div>
                         <button class="btn-master-export" onclick="masterExport()">
-                            ⬇ Master Export — ${label}
+                            â¬ Master Export â ${label}
                         </button>
                     </div>
                 </div>
@@ -1901,7 +1925,7 @@
        ===================================================== */
 
     function createNewInvoiceSection(saved) {
-        // Standard billing section (rate × hours)
+        // Standard billing section (rate Ã hours)
         const id          = saved ? saved.id : Date.now();
         const serviceType = saved ? (saved.serviceType || saved.serviceOwner || saved.category || 'Attorney') : document.getElementById('serviceTypeSelector').value;
         const caseName    = saved ? (saved.caseName || saved.personName || '') : (document.getElementById('caseNameInput') ? document.getElementById('caseNameInput').value : '');
@@ -1919,7 +1943,7 @@
         sectionDiv.innerHTML = `
             <div class="section-bar">
                 <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">â¼</span>
                     <strong>${serviceType}</strong>
                     <span style="font-size:12px; color:#555;">Case Name:</span>
                     <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
@@ -1949,7 +1973,7 @@
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
                 </div>
             <div id="kicknotes-${id}" class="kickback-notes-panel" style="display:none; margin-top:14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px;">
-                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">📝 Finance Notes for this section:</label>
+                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">ð Finance Notes for this section:</label>
                 <textarea id="kicknote-${id}" class="kicknote-field" placeholder="Enter corrections needed for this section..." style="width:100%; min-height:70px; padding:8px; border:1px solid #ffc107; border-radius:4px; font-size:13px; resize:vertical; box-sizing:border-box;"></textarea>
             </div>
             </div>`;
@@ -1965,7 +1989,7 @@
     }
 
     function createNewExpensesSection(saved) {
-        // Expenses section (units × per cost, with Expense Type dropdown)
+        // Expenses section (units Ã per cost, with Expense Type dropdown)
         const id = saved ? saved.id : Date.now();
         const caseName = saved ? (saved.caseName || saved.personName || '') : (document.getElementById('caseNameInput') ? document.getElementById('caseNameInput').value : '');
 
@@ -1980,7 +2004,7 @@
         sectionDiv.innerHTML = `
             <div class="section-bar">
                 <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">▼</span>
+                    <span class="minimize-btn" onclick="toggleSectionBody('${id}')">â¼</span>
                     <strong>Expenses</strong>
                     <span style="font-size:12px; color:#555;">Case Name:</span>
                     <input type="text" class="sec-name" value="${caseName}" placeholder="Enter case name..." style="padding:4px 8px; font-size:13px; border:1px solid #ccc; border-radius:4px; min-width:160px;">
@@ -2007,7 +2031,7 @@
                     </tr>
                 </table>
                 <div style="display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;">
-                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label>
+                    <label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">ð Proof of Payment:</label>
                     <input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;">
                     <span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>
                 </div>
@@ -2016,7 +2040,7 @@
                     <button class="btn btn-remove-row" onclick="removeLastRow('${id}')">Remove Row</button>
                 </div>
             <div id="kicknotes-${id}" class="kickback-notes-panel" style="display:none; margin-top:14px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:12px;">
-                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">📝 Finance Notes for this section:</label>
+                <label style="font-size:12px; font-weight:700; color:#856404; display:block; margin-bottom:6px;">ð Finance Notes for this section:</label>
                 <textarea id="kicknote-${id}" class="kicknote-field" placeholder="Enter corrections needed for this section..." style="width:100%; min-height:70px; padding:8px; border:1px solid #ffc107; border-radius:4px; font-size:13px; resize:vertical; box-sizing:border-box;"></textarea>
             </div>
             </div>`;
@@ -2130,7 +2154,7 @@
                 if (!existingPdf) {
                     const pdfDiv = document.createElement('div');
                     pdfDiv.style.cssText = 'display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 0; border-top:1px solid #e0e0e0;';
-                    pdfDiv.innerHTML = `<label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">📎 Proof of Payment:</label><input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;"><span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>`;
+                    pdfDiv.innerHTML = `<label style="font-size:12px; font-weight:700; color:#555; white-space:nowrap;">ð Proof of Payment:</label><input type="file" id="pdf-upload-${id}" accept=".pdf,image/*" multiple style="font-size:12px; cursor:pointer;"><span id="pdf-count-${id}" style="font-size:11px; color:#888;"></span>`;
                     const rowBtns = document.getElementById('rowbtns-' + id);
                     if (rowBtns) contentDiv.insertBefore(pdfDiv, rowBtns);
                     const pdfInput = document.getElementById('pdf-upload-' + id);
@@ -2315,7 +2339,7 @@
     /* --- DATA MANAGEMENT --- */
     async function syncInvoiceData(final) {
         const sectionsArray = Array.from(document.querySelectorAll('[id^="sec-"]')).map(function(sectionElement) {
-            const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '').split(' ')[0];
+            const categoryText = sectionElement.querySelector('.section-bar span').innerText.replace('â¼ ', '').split(' ')[0];
             const personNameInput = sectionElement.querySelector('.sec-name');
             const rateInput = sectionElement.querySelector('.rate-box');
             const isExpSect = (sectionElement.dataset.billingType === 'Expenses');
@@ -2440,16 +2464,50 @@
             document.getElementById('invoiceContainer').innerHTML = "";
             data.sections.forEach(function(sectionData) { (sectionData.billingType==='Expenses'||sectionData.category==='Expenses') ? createNewExpensesSection(sectionData) : createNewInvoiceSection(sectionData); });
             
-            if (data.status === 'Sent Back') {
-                document.getElementById('btnSync').style.display = "none";
-                document.getElementById('btnSubmit').style.display = "none";
-                document.getElementById('btnExcel').style.display = "none";
-                document.getElementById('btnResubmit').style.display = "block";
+            if (data.status === 'Paid') {
+                document.getElementById('btnSync').style.display = 'none';
+                document.getElementById('btnSubmit').style.display = 'none';
+                document.getElementById('btnExcel').style.display = 'block';
+                document.getElementById('btnResubmit').style.display = 'none';
+                document.getElementById('sectionAdder').style.display = 'none';
+                // Lock all inputs/selects/textareas in the invoice
+                document.querySelectorAll('#invoiceContainer input, #invoiceContainer select, #invoiceContainer textarea').forEach(function(el) {
+                    el.disabled = true;
+                    el.style.opacity = '0.7';
+                });
+                document.querySelectorAll('#invoiceContainer button').forEach(function(btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.4';
+                });
+                // Show paid locked banner
+                var paidBanner = document.getElementById('paidLockBanner');
+                if (!paidBanner) {
+                    paidBanner = document.createElement('div');
+                    paidBanner.id = 'paidLockBanner';
+                    paidBanner.style.cssText = 'background:#27ae60; color:white; padding:12px 20px; border-radius:8px; text-align:center; font-weight:700; margin-bottom:15px; font-size:15px;';
+                    paidBanner.innerText = '\u2705 This invoice has been paid and is now locked. No further edits can be made.';
+                    document.getElementById('invoiceView').insertBefore(paidBanner, document.getElementById('invoiceContainer'));
+                }
+                paidBanner.style.display = 'block';
+                // Lock header fields
+                document.getElementById('payeeName').disabled = true;
+                document.getElementById('firmName').disabled = true;
+                document.getElementById('address1').disabled = true;
+                document.getElementById('address2').disabled = true;
+                document.getElementById('address3').disabled = true;
+                document.getElementById('invNum').disabled = true;
+            } else if (data.status === 'Sent Back') {
+                document.getElementById('btnSync').style.display = 'none';
+                document.getElementById('btnSubmit').style.display = 'none';
+                document.getElementById('btnExcel').style.display = 'none';
+                document.getElementById('btnResubmit').style.display = 'block';
+                if (document.getElementById('paidLockBanner')) document.getElementById('paidLockBanner').style.display = 'none';
             } else {
-                document.getElementById('btnSync').style.display = "block";
-                document.getElementById('btnSubmit').style.display = "block";
-                document.getElementById('btnExcel').style.display = "block";
-                document.getElementById('btnResubmit').style.display = "none";
+                document.getElementById('btnSync').style.display = 'block';
+                document.getElementById('btnSubmit').style.display = 'block';
+                document.getElementById('btnExcel').style.display = 'block';
+                document.getElementById('btnResubmit').style.display = 'none';
+                if (document.getElementById('paidLockBanner')) document.getElementById('paidLockBanner').style.display = 'none';
             }
             calculateInvoices();
         } else {
@@ -2509,7 +2567,7 @@
         ];
         
         document.querySelectorAll('[id^="sec-"]').forEach(function(sectionElement) {
-            let headerText = sectionElement.querySelector('.section-bar span').innerText.replace('▼ ', '');
+            let headerText = sectionElement.querySelector('.section-bar span').innerText.replace('â¼ ', '');
             let rateValue = sectionElement.querySelector('.rate-box').value;
             excelData.push([headerText.toUpperCase(), "", "", "Rate:", "$" + rateValue]);
             excelData.push(["Date", "Desc", "Time", "Amount"]);
@@ -2601,7 +2659,7 @@
             list.innerHTML = '';
             // "All payees" option
             const allOpt = document.createElement('div');
-            allOpt.innerText = '— All Payees —';
+            allOpt.innerText = 'â All Payees â';
             allOpt.style.cssText = 'padding:8px 12px; cursor:pointer; font-style:italic; color:#888; border-bottom:1px solid #eee;';
             allOpt.onmouseover = function() { this.style.background = '#f0f0f0'; };
             allOpt.onmouseout = function() { this.style.background = ''; };
@@ -2727,7 +2785,7 @@
 
 
 
-    // ── PAYMENT MODAL ──────────────────────────────────────────────────────────
+    // ââ PAYMENT MODAL ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     const _sectionPdfs = new Map(); // stores base64 PDF attachments per section id
     let _pmtInvoiceId = null;
     let _pmtTotalDue  = 0;
@@ -2784,7 +2842,7 @@
         loadFinanceView();
     }
 
-    // ── PDF RECEIPT GENERATOR ──────────────────────────────────────────────────
+    // ââ PDF RECEIPT GENERATOR ââââââââââââââââââââââââââââââââââââââââââââââââââ
     function generateReceiptPDF(inv, amountPaid, remaining) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'letter' });
@@ -2795,7 +2853,7 @@
         const COL_W = R - L;
         let y = 50;
 
-        // ── helpers ──
+        // ââ helpers ââ
         function addPage() {
             doc.addPage();
             y = 50;
@@ -2820,7 +2878,7 @@
             // subtitle removed
         }
 
-        // ── PAGE 1 HEADER ──
+        // ââ PAGE 1 HEADER ââ
         drawPageHeader();
         y = 60;
 
@@ -2850,16 +2908,16 @@
 
         const _submittedDate = inv.submitted_at
             ? new Date(inv.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-            : (inv.updated_at ? new Date(inv.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+            : (inv.updated_at ? new Date(inv.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'â');
 
         const rx = PW - 230;
         doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(44,62,80);
-        doc.text('Invoice #:',        rx, y+20); doc.setFont('helvetica','normal'); doc.text(inv.inv_num || '—', rx+85, y+20);
+        doc.text('Invoice #:',        rx, y+20); doc.setFont('helvetica','normal'); doc.text(inv.inv_num || 'â', rx+85, y+20);
         doc.setFont('helvetica','bold');
         doc.text('Date Submitted:',   rx, y+33); doc.setFont('helvetica','normal'); doc.text(_submittedDate, rx+85, y+33);
         y += 86;
 
-        // ── SECTIONS ──
+        // ââ SECTIONS ââ
         const sections = inv.sections || [];
         sections.forEach(function(sec, secIdx) {
             const isExp  = sec.billingType === 'Expenses' || sec.category === 'Expenses';
@@ -2912,7 +2970,7 @@
                 doc.rect(L, y, COL_W, 16, 'F');
                 doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,40,40);
 
-                const dateStr = row.date ? new Date(row.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+                const dateStr = row.date ? new Date(row.date + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'â';
                 // Truncate description
                 const descFull = row.desc || '';
                 const descShort = descFull.length > 45 ? descFull.substring(0,42) + '...' : descFull;
@@ -2924,7 +2982,7 @@
                     secTotal += rowTotal;
                     doc.text(dateStr,               L+6,   y+11);
                     doc.text(descShort,             L+82,  y+11);
-                    doc.text(row.expType || '—',    L+272, y+11);
+                    doc.text(row.expType || 'â',    L+272, y+11);
                     doc.text(units.toFixed(2),      L+354, y+11, { align:'right' });
                     doc.text(fmtMoney(perCost),     L+414, y+11, { align:'right' });
                     doc.text(fmtMoney(rowTotal),    R-6,   y+11, { align:'right' });
@@ -2956,7 +3014,7 @@
             y += 24;
         });
 
-        // ── PAYMENT SUMMARY FOOTER ──
+        // ââ PAYMENT SUMMARY FOOTER ââ
         checkY(110);
         y += 10;
         hline(y, '#2c3e50');
@@ -2986,7 +3044,7 @@
         y = PH - 36;
         hline(y, '#cccccc');
         doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
-        doc.text('Generated by Legal Invoice Portal  ·  ' + new Date().toLocaleString(), PW/2, y+14, { align:'center' });
+        doc.text('Generated by Legal Invoice Portal  Â·  ' + new Date().toLocaleString(), PW/2, y+14, { align:'center' });
 
         // Save
         const fileName = 'Invoice_' + _invoiceId + '.pdf';
@@ -3015,8 +3073,8 @@
     <div id="paymentModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.55); z-index:9999; display:none; align-items:center; justify-content:center;">
         <div style="background:white; border-radius:12px; padding:36px; max-width:480px; width:92%; box-shadow:0 8px 40px rgba(0,0,0,0.25);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; border-bottom:2px solid #2c3e50; padding-bottom:14px;">
-                <h2 style="margin:0; font-size:20px; color:#2c3e50;">💳 Confirm Payment</h2>
-                <button onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#888; line-height:1;">×</button>
+                <h2 style="margin:0; font-size:20px; color:#2c3e50;">ð³ Confirm Payment</h2>
+                <button onclick="closePaymentModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#888; line-height:1;">Ã</button>
             </div>
             <div style="margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:15px;">
@@ -3050,7 +3108,7 @@
             </div>
             <div style="display:flex; gap:12px; justify-content:flex-end;">
                 <button onclick="closePaymentModal()" style="padding:10px 24px; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">Cancel</button>
-                <button onclick="confirmPayment()" id="pmtConfirmBtn" style="padding:10px 24px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:700;">✓ Confirm & Generate Receipt</button>
+                <button onclick="confirmPayment()" id="pmtConfirmBtn" style="padding:10px 24px; background:#28a745; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px; font-weight:700;">â Confirm & Generate Receipt</button>
             </div>
         </div>
     </div>
