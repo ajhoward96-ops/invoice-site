@@ -1094,6 +1094,65 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_NL24nDck9VjS3QMbzIPwDg_bWzWUpW9';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // ========= Email Notification Helpers =========
+    const SEND_EMAIL_URL = 'https://cfliviopdogrljkxzuaa.supabase.co/functions/v1/send-invoice-email';
+
+    async function upsertProfile(userCode, payee, email) {
+        try {
+            if (!userCode || !email) return;
+            await supabaseClient.from('profiles').upsert({
+                user_code: userCode,
+                payee: payee || '',
+                email: email,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_code' });
+        } catch (e) { console.warn('upsertProfile failed', e); }
+    }
+
+    async function getEmailForUserCode(userCode) {
+        try {
+            if (!userCode) return null;
+            try {
+                const ls = localStorage.getItem('userEmail_' + userCode);
+                if (ls) return ls;
+            } catch(e) {}
+            const r = await supabaseClient.from('profiles').select('email, payee').eq('user_code', userCode).maybeSingle();
+            return (r && r.data && r.data.email) ? r.data.email : null;
+        } catch (e) { return null; }
+    }
+
+    async function getPayeeForUserCode(userCode) {
+        try {
+            if (!userCode) return '';
+            const r = await supabaseClient.from('profiles').select('payee').eq('user_code', userCode).maybeSingle();
+            return (r && r.data && r.data.payee) ? r.data.payee : '';
+        } catch (e) { return ''; }
+    }
+
+    async function sendInvoiceStatusEmail(userCode, status, monthYear, notes) {
+        try {
+            const to = await getEmailForUserCode(userCode);
+            if (!to) { console.warn('No email on file for', userCode); return; }
+            const payee = await getPayeeForUserCode(userCode);
+            const body = { to: to, status: status, monthYear: monthYear || '', payee: payee || '' };
+            if (notes) body.notes = notes;
+            const headers = { 'Content-Type': 'application/json' };
+            try {
+                if (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) {
+                    headers['apikey'] = SUPABASE_ANON_KEY;
+                    headers['Authorization'] = 'Bearer ' + SUPABASE_ANON_KEY;
+                }
+            } catch(e) {}
+            const resp = await fetch(SEND_EMAIL_URL, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+            if (!resp.ok) console.warn('sendInvoiceStatusEmail non-OK', resp.status);
+        } catch (e) { console.warn('sendInvoiceStatusEmail failed', e); }
+    }
+    // =============================================
+
     let currentUserCode = "";
     let isRegistrationMode = false;
     let activeAdminInvoiceId = "";
@@ -1286,6 +1345,7 @@
         var __emailEl = document.getElementById('setupEmail');
         window.userEmail = __emailEl ? __emailEl.value : '';
         try { localStorage.setItem('userEmail_' + currentUserCode, window.userEmail); } catch(e) {}
+        try { var __payeeForSync = (document.getElementById('setupName') || document.getElementById('acct-name') || {}).value || ''; upsertProfile(currentUserCode, __payeeForSync, window.userEmail); } catch(e) {}
         document.getElementById('loginOverlay').style.display = "none";
         document.getElementById('masterTopBar').style.display = "flex";
         document.getElementById('btnUserAssistance').style.display = "none";
@@ -1319,6 +1379,7 @@
                 alert('Error deactivating account: ' + error.message);
             } else {
                 alert('Account for ' + payeeName + ' has been deactivated. All data has been preserved.');
+                try { await sendInvoiceStatusEmail(userCode, 'deactivated', ''); } catch(e) {}
                 closeAssistance();
                 loadFinanceView();
             }
@@ -1476,6 +1537,12 @@
 
     async function updateInvoiceStatus(id, newStatus) {
         await supabaseClient.from('invoices').update({ status: newStatus }).eq('month_year', id);
+        if (newStatus === 'Ready for Payment') {
+            try {
+                const { data: inv } = await supabaseClient.from('invoices').select('user_code').eq('month_year', id).maybeSingle();
+                if (inv && inv.user_code) await sendInvoiceStatusEmail(inv.user_code, 'approved', id);
+            } catch(e) {}
+        }
         loadFinanceView(); 
     }
 
@@ -1527,6 +1594,10 @@
                 sections: updatedSections
             }).eq('month_year', activeAdminInvoiceId);
             alert('Invoice sent back to law team with notes!');
+            try {
+                var __notesConcat = Object.keys(notesMap).map(function(k){ return notesMap[k]; }).filter(function(n){ return n && n.trim(); }).join('\n\n');
+                if (data && data.user_code) await sendInvoiceStatusEmail(data.user_code, 'sent_back', activeAdminInvoiceId, __notesConcat);
+            } catch(e) {}
             navigateBackToDashboard();
         }
     }
@@ -2426,6 +2497,7 @@
                 alert('Save failed: ' + error.message);
             } else if (final) {
                 alert('Submitted to Finance! Your invoice is now pending review.');
+                try { await sendInvoiceStatusEmail(currentUserCode, 'submitted', primaryKey); } catch(e) {}
             }
         } catch(e) {
             alert('Error saving invoice: ' + e.message);
@@ -2641,6 +2713,7 @@
             if (__acctEmailEl) {
                 window.userEmail = __acctEmailEl.value.trim();
                 try { localStorage.setItem('userEmail_' + currentUserCode, window.userEmail); } catch(e) {}
+        try { var __payeeForSync = (document.getElementById('setupName') || document.getElementById('acct-name') || {}).value || ''; upsertProfile(currentUserCode, __payeeForSync, window.userEmail); } catch(e) {}
             }
             const newKey = document.getElementById('acct-userKey').value.trim();
             if (newKey && typeof currentUserCode !== 'undefined' && newKey !== currentUserCode) {
@@ -2854,6 +2927,7 @@
 
         // Generate PDF receipt
         if (_pmtInvData) generateReceiptPDF(_pmtInvData, paid, remaining);
+        try { if (_pmtInvData && _pmtInvData.user_code) await sendInvoiceStatusEmail(_pmtInvData.user_code, 'paid', _pmtInvoiceId); } catch(e) {}
 
         closePaymentModal();
         loadFinanceView();
