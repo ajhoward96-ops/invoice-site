@@ -1124,8 +1124,21 @@
     async function getPayeeForUserCode(userCode) {
         try {
             if (!userCode) return '';
-            const r = await supabaseClient.from('profiles').select('payee').eq('user_code', userCode).maybeSingle();
-            return (r && r.data && r.data.payee) ? r.data.payee : '';
+            let payee = '';
+            try {
+                const r = await supabaseClient.from('profiles').select('payee').eq('user_code', userCode).maybeSingle();
+                if (r && r.data && r.data.payee) payee = r.data.payee;
+            } catch (_) {}
+            if (!payee) {
+                try {
+                    const inv = await supabaseClient.from('invoices').select('payee,updated_at').eq('user_code', userCode).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+                    if (inv && inv.data && inv.data.payee) {
+                        payee = inv.data.payee;
+                        try { await supabaseClient.from('profiles').update({ payee: payee }).eq('user_code', userCode); } catch (_) {}
+                    }
+                } catch (_) {}
+            }
+            return payee || '';
         } catch (e) { return ''; }
     }
 
