@@ -1129,13 +1129,20 @@
         } catch (e) { return ''; }
     }
 
-    async function sendInvoiceStatusEmail(userCode, status, monthYear, notes) {
+    async function sendInvoiceStatusEmail(userCode, status, monthYear, notesOrOpts) {
         try {
             const to = await getEmailForUserCode(userCode);
             if (!to) { console.warn('No email on file for', userCode); return; }
             const payee = await getPayeeForUserCode(userCode);
             const body = { to: to, status: status, monthYear: monthYear || '', payee: payee || '' };
-            if (notes) body.notes = notes;
+            if (notesOrOpts) {
+                if (typeof notesOrOpts === 'string') {
+                    body.notes = notesOrOpts;
+                } else if (typeof notesOrOpts === 'object') {
+                    if (notesOrOpts.notes) body.notes = notesOrOpts.notes;
+                    if (Array.isArray(notesOrOpts.sections)) body.sections = notesOrOpts.sections;
+                }
+            }
             const headers = { 'Content-Type': 'application/json' };
             try {
                 if (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) {
@@ -1595,8 +1602,23 @@
             }).eq('month_year', activeAdminInvoiceId);
             alert('Invoice sent back to law team with notes!');
             try {
-                var __notesConcat = Object.keys(notesMap).map(function(k){ return notesMap[k]; }).filter(function(n){ return n && n.trim(); }).join('\n\n');
-                if (data && data.user_code) await sendInvoiceStatusEmail(data.user_code, 'sent_back', activeAdminInvoiceId, __notesConcat);
+                var __emailSections = [];
+                try {
+                    if (data && Array.isArray(data.sections)) {
+                        data.sections.forEach(function(sec){
+                            var key = String(sec && sec.id != null ? sec.id : '');
+                            var note = notesMap[key];
+                            if (note && note.trim()) {
+                                __emailSections.push({
+                                    providerType: (sec && sec.serviceType) ? sec.serviceType : '',
+                                    caseName: (sec && sec.caseName) ? sec.caseName : '',
+                                    note: note.trim()
+                                });
+                            }
+                        });
+                    }
+                } catch(eSec) {}
+                if (data && data.user_code) await sendInvoiceStatusEmail(data.user_code, 'sent_back', activeAdminInvoiceId, { sections: __emailSections });
             } catch(e) {}
             navigateBackToDashboard();
         }
